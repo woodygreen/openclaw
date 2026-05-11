@@ -126,7 +126,7 @@ describe("normalizeRegisteredProvider", () => {
           },
         },
       }),
-      expectedProvider: {
+      expectedProvider: makeProvider({
         id: "demo",
         label: "Demo Provider",
         aliases: ["alias-one"],
@@ -155,7 +155,7 @@ describe("normalizeRegisteredProvider", () => {
             label: "Demo models",
           },
         },
-      },
+      }),
       expectedDiagnostics: [
         {
           level: "error",
