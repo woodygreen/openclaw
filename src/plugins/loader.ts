@@ -1757,7 +1757,7 @@ export function loadOpenClawPlugins(options: PluginLoadOptions = {}): PluginRegi
           bundleFormat: manifestRecord.bundleFormat,
           bundleCapabilities: manifestRecord.bundleCapabilities,
           source: candidate.source,
-          rootDir: candidate.rootDir,
+          rootDir: safeRealpathOrResolve(candidate.rootDir),
           origin: candidate.origin,
           workspaceDir: candidate.workspaceDir,
           trustedOfficialInstall: manifestRecord.trustedOfficialInstall,
@@ -1796,7 +1796,7 @@ export function loadOpenClawPlugins(options: PluginLoadOptions = {}): PluginRegi
         bundleFormat: manifestRecord.bundleFormat,
         bundleCapabilities: manifestRecord.bundleCapabilities,
         source: candidate.source,
-        rootDir: candidate.rootDir,
+        rootDir: safeRealpathOrResolve(candidate.rootDir),
         origin: candidate.origin,
         workspaceDir: candidate.workspaceDir,
         trustedOfficialInstall: manifestRecord.trustedOfficialInstall,
@@ -2028,7 +2028,7 @@ export function loadOpenClawPlugins(options: PluginLoadOptions = {}): PluginRegi
       const moduleRoot = resolveCanonicalDistRuntimeSource(loadEntry.rootDir);
       const rejectHardlinks = shouldRejectHardlinkedPluginFiles({
         origin: candidate.origin,
-        rootDir: candidate.rootDir,
+        rootDir: safeRealpathOrResolve(candidate.rootDir),
         env,
       });
       const opened = openRootFileSync({
@@ -2588,7 +2588,7 @@ export async function loadOpenClawPluginCliRegistry(
         bundleFormat: manifestRecord.bundleFormat,
         bundleCapabilities: manifestRecord.bundleCapabilities,
         source: candidate.source,
-        rootDir: candidate.rootDir,
+        rootDir: safeRealpathOrResolve(candidate.rootDir),
         origin: candidate.origin,
         workspaceDir: candidate.workspaceDir,
         trustedOfficialInstall: manifestRecord.trustedOfficialInstall,
@@ -2627,7 +2627,7 @@ export async function loadOpenClawPluginCliRegistry(
       bundleFormat: manifestRecord.bundleFormat,
       bundleCapabilities: manifestRecord.bundleCapabilities,
       source: candidate.source,
-      rootDir: candidate.rootDir,
+      rootDir: safeRealpathOrResolve(candidate.rootDir),
       origin: candidate.origin,
       workspaceDir: candidate.workspaceDir,
       trustedOfficialInstall: manifestRecord.trustedOfficialInstall,
@@ -2709,7 +2709,7 @@ export async function loadOpenClawPluginCliRegistry(
       boundaryLabel: "plugin root",
       rejectHardlinks: shouldRejectHardlinkedPluginFiles({
         origin: candidate.origin,
-        rootDir: candidate.rootDir,
+        rootDir: safeRealpathOrResolve(candidate.rootDir),
         env,
       }),
       skipLexicalRootCheck: true,
@@ -2845,7 +2845,7 @@ export async function loadOpenClawPluginCliRegistry(
 
 function safeRealpathOrResolve(value: string): string {
   try {
-    return fs.realpathSync(value);
+    return fs.realpathSync.native(value);
   } catch {
     return path.resolve(value);
   }
