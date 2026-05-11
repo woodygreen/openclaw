@@ -15,6 +15,7 @@ type CardState = {
   sequence: number;
   currentText: string;
   hasNote: boolean;
+  hasStatusBar: boolean;
 };
 
 /** Options for customising the initial streaming card appearance. */
@@ -23,6 +24,8 @@ type StreamingCardOptions = {
   header?: CardHeaderConfig;
   /** Optional grey note footer text. */
   note?: string;
+  /** Optional status bar showing agent state. */
+  statusBar?: { label: string; color: string };
 };
 
 /** Optional header for streaming cards (title bar with color template) */
@@ -207,6 +210,14 @@ export class FeishuStreamingSession {
     const elements: Record<string, unknown>[] = [
       { tag: "markdown", content: "⏳ Thinking...", element_id: "content" },
     ];
+    if (options?.statusBar) {
+      elements.push({ tag: "hr" });
+      elements.push({
+        tag: "markdown",
+        content: `<font color='${options.statusBar.color}'>● ${options.statusBar.label}</font>`,
+        element_id: "status_bar",
+      });
+    }
     if (options?.note) {
       elements.push({ tag: "hr" });
       elements.push({
@@ -307,6 +318,7 @@ export class FeishuStreamingSession {
       sequence: 1,
       currentText: "",
       hasNote: !!options?.note,
+      hasStatusBar: !!options?.statusBar,
     };
     this.log?.(`Started streaming: cardId=${cardId}, messageId=${sendRes.data.message_id}`);
   }
@@ -426,6 +438,37 @@ export class FeishuStreamingSession {
         await release();
       })
       .catch((e) => this.log?.(`Note update failed: ${String(e)}`));
+  }
+
+  /** update the status bar element showing agent state */
+  async updateStatusBar(label: string, color: string): Promise<void> {
+    if (!this.state || !this.state.hasStatusBar || this.closed) {
+      return;
+    }
+    const apiBase = resolveApiBase(this.creds.domain);
+    this.state.sequence += 1;
+    await fetchWithSsrFGuard({
+      url: `${apiBase}/cardkit/v1/cards/${this.state.cardId}/elements/status_bar/content`,
+      init: {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${await getToken(this.creds)}`,
+          "Content-Type": "application/json",
+          "User-Agent": getFeishuUserAgent(),
+        },
+        body: JSON.stringify({
+          content: `<font color='${color}'>● ${label}</font>`,
+          sequence: this.state.sequence,
+          uuid: `sb_${this.state.cardId}_${this.state.sequence}`,
+        }),
+      },
+      policy: { allowedHostnames: resolveAllowedHostnames(this.creds.domain) },
+      auditContext: "feishu.streaming-card.status-bar-update",
+    })
+      .then(async ({ release }) => {
+        await release();
+      })
+      .catch((e) => this.log?.(`Status bar update failed: ${String(e)}`));
   }
 
   async close(finalText?: string, options?: { note?: string }): Promise<void> {
