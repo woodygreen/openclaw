@@ -106,8 +106,10 @@ export { buildEmbeddedAttemptToolRunContext } from "../agents/pi-embedded-runner
 export { abortEmbeddedPiRun as abortAgentHarnessRun, clearActiveEmbeddedRun, setActiveEmbeddedRun };
 
 /**
- * @deprecated Active-run queueing is an internal runtime concern. Use current
- * runtime hooks instead of steering a harness through this legacy boolean API.
+ * @deprecated Active-run queueing is an internal runtime concern. This legacy
+ * boolean API only reports immediate queue eligibility and cannot observe async
+ * runtime rejection; runtime-owned delivery paths should use acceptance-aware
+ * steering instead of public SDK queueing.
  */
 export function queueAgentHarnessMessage(
   sessionId: string,

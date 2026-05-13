@@ -702,7 +702,7 @@ describe("subagent registry lifecycle hardening", () => {
           path: "direct";
           error: string;
           phases: Array<{
-            phase: "direct-primary" | "queue-fallback";
+            phase: "direct-primary" | "steer-fallback";
             delivered: boolean;
             path: "direct" | "none";
             error?: string;
@@ -721,7 +721,7 @@ describe("subagent registry lifecycle hardening", () => {
               error: "UNAVAILABLE: requester wake failed",
             },
             {
-              phase: "queue-fallback",
+              phase: "steer-fallback",
               delivered: false,
               path: "none",
             },

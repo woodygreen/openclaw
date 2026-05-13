@@ -109,7 +109,7 @@ vi.mock("./subagent-announce-delivery.js", () => ({
         `[Internal task completion event]\n${params.triggerMessage}`,
         { steeringMode: "all" },
       );
-      return { delivered: true, path: "queue" };
+      return { delivered: true, path: "steered" };
     }
 
     const effectiveOrigin =
@@ -334,7 +334,7 @@ describe("subagent announce seam flow", () => {
       messages: {
         queue: {
           byChannel: {
-            discord: "steer",
+            discord: "followup",
           },
         },
       },
