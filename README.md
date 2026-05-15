@@ -154,6 +154,24 @@ Run `openclaw doctor` to surface risky/misconfigured DM policies.
 - **[Companion apps](https://docs.openclaw.ai/platforms/macos)** — macOS menu bar app + iOS/Android [nodes](https://docs.openclaw.ai/nodes).
 - **[Onboarding](https://docs.openclaw.ai/start/wizard) + [skills](https://docs.openclaw.ai/tools/skills)** — onboarding-driven setup with bundled/managed/workspace skills.
 
+## Supervisor Agent Architecture
+
+OpenClaw includes a **Supervisor Agent** system that orchestrates multiple specialized Sub-Agents to handle complex user intents across different domains. Rather than sending every request to a single agent, the Supervisor classifies intent, routes tasks to the best-fit Sub-Agent, and coordinates results.
+
+Key concepts:
+
+- **Manifest-driven routing** — Each Sub-Agent declares its capabilities, boundaries, and reject patterns via an `AgentManifest`. The Supervisor uses these declarations for fast rule-based routing (no LLM call for most decisions).
+- **Execution Board** — A global state panel tracks agent execution status, staging results, and finalized results with dual-layer commit for concurrency safety.
+- **Context Accumulator** — Replaces the old sequential queue with an observation window that debounces, aggregates messages, and intercepts withdrawals before dispatching to the Supervisor.
+- **Interrupt Cost Analysis** — Three-dimension assessment (work loss, resume viability, user impact) governs whether an in-progress task should be interrupted when a user sends a new message or recalls a previous one.
+- **Staged Side Effects** — Operations that modify external state (e.g. sending a message, writing a doc) are staged first and committed only after the Supervisor confirms — no premature irreversible actions.
+
+Default Sub-Agents: `agent-doc` (Feishu document/wiki/drive), `agent-data` (bitable, search, web lookup), `agent-ci` (build, deploy, cron), `agent-chat` (general conversation fallback).
+
+Design documents: [`docs/design/`](docs/design/) (00–09, covering overview, requirements, architecture, supervisor, sub-agents, concurrency, context-and-memory, message-lifecycle, implementation-plan, deployment).
+
+Current implementation status: **Phase 1 complete** (type definitions in [`src/agents/supervisor/types.ts`](src/agents/supervisor/types.ts), default manifests in [`src/agents/supervisor/default-manifests.ts`](src/agents/supervisor/default-manifests.ts), 60 structural tests in [`src/agents/supervisor/types.test.ts`](src/agents/supervisor/types.test.ts)).
+
 ## Security model (important)
 
 - Default: tools run on the host for the `main` session, so the agent has full access when it is just you.
