@@ -4,12 +4,46 @@ import type { DeviceIdentity } from "../infra/device-identity.js";
 import { captureEnv } from "../test-utils/env.js";
 import { MIN_CLIENT_PROTOCOL_VERSION, PROTOCOL_VERSION } from "./protocol/index.js";
 
+type MockLoggingConfig = {
+  redactPatterns?: string[];
+  redactSensitive?: "off" | "tools";
+};
+
 const wsInstances = vi.hoisted((): MockWebSocket[] => []);
 const clearDeviceAuthTokenMock = vi.hoisted(() => vi.fn());
 const loadDeviceAuthTokenMock = vi.hoisted(() => vi.fn());
 const storeDeviceAuthTokenMock = vi.hoisted(() => vi.fn());
 const logDebugMock = vi.hoisted(() => vi.fn());
 const logErrorMock = vi.hoisted(() => vi.fn());
+const readLoggingConfigMock = vi.hoisted(() =>
+  vi.fn<() => MockLoggingConfig | undefined>(() => undefined),
+);
+const {
+  installGlobalProxyMock,
+  proxylineRegisterBypassMock,
+  proxylineStopMock,
+  proxylineUnregisterBypassMock,
+} = vi.hoisted(() => {
+  const proxylineStopMock = vi.fn();
+  const proxylineUnregisterBypassMock = vi.fn();
+  const proxylineRegisterBypassMock = vi.fn(() => proxylineUnregisterBypassMock);
+  return {
+    proxylineRegisterBypassMock,
+    proxylineStopMock,
+    proxylineUnregisterBypassMock,
+    installGlobalProxyMock: vi.fn(() => ({
+      active: true,
+      createNodeAgent: vi.fn(),
+      createUndiciDispatcher: vi.fn(),
+      createWebSocketAgent: vi.fn(),
+      explain: vi.fn(),
+      mode: "managed",
+      registerBypass: proxylineRegisterBypassMock,
+      stop: proxylineStopMock,
+      withBypass: vi.fn(),
+    })),
+  };
+});
 
 type WsEvent = "open" | "message" | "close" | "error";
 type WsEventHandlers = {
@@ -124,6 +158,15 @@ vi.mock("../logger.js", async () => {
     ...actual,
     logDebug: (...args: unknown[]) => logDebugMock(...args),
     logError: (...args: unknown[]) => logErrorMock(...args),
+  };
+});
+
+vi.mock("../logging/config.js", async () => {
+  const actual =
+    await vi.importActual<typeof import("../logging/config.js")>("../logging/config.js");
+  return {
+    ...actual,
+    readLoggingConfig: () => readLoggingConfigMock(),
   };
 });
 
@@ -713,6 +756,8 @@ describe("GatewayClient connect auth payload", () => {
     wsInstances.length = 0;
     loadDeviceAuthTokenMock.mockReset();
     storeDeviceAuthTokenMock.mockReset();
+    readLoggingConfigMock.mockReset();
+    readLoggingConfigMock.mockReturnValue(undefined);
     logDebugMock.mockClear();
     logErrorMock.mockClear();
   });
@@ -914,6 +959,82 @@ describe("GatewayClient connect auth payload", () => {
       "gateway connect failed: Error: gateway client stopped",
     );
     expect(ws.closeCalls).toBe(1);
+  });
+
+  it("redacts secret-bearing connect failure logs", async () => {
+    const client = new GatewayClient({
+      url: "ws://127.0.0.1:18789",
+      token: "shared-token",
+      deviceIdentity: null,
+    });
+
+    const { ws, connect } = startClientAndConnect({ client });
+    emitConnectFailure(
+      ws,
+      connect.id,
+      { code: "AUTH_UNAUTHORIZED" },
+      "Authorization: Bearer sk-testsecret1234567890abcd wss://user:pass@gateway.example/ws?token=secret-token", // pragma: allowlist secret
+    );
+
+    await vi.waitFor(() => {
+      expect(logErrorMock).toHaveBeenCalledWith(expect.stringContaining("gateway connect failed:"));
+    });
+    const logged = String(logErrorMock.mock.calls.at(-1)?.[0] ?? "");
+    expect(logged).toContain("Authorization: Bearer");
+    expect(logged).not.toContain("sk-testsecret1234567890abcd");
+    expect(logged).not.toContain("user:pass");
+    expect(logged).not.toContain("secret-token");
+    client.stop();
+  });
+
+  it("preserves trailing diagnostics after redacted connect failure URL query params", async () => {
+    const client = new GatewayClient({
+      url: "ws://127.0.0.1:18789",
+      token: "shared-token",
+      deviceIdentity: null,
+    });
+
+    const { ws, connect } = startClientAndConnect({ client });
+    emitConnectFailure(
+      ws,
+      connect.id,
+      { code: "AUTH_UNAUTHORIZED" },
+      "wss://gateway.example/ws?token=secret-token failed with 401 from remote gateway", // pragma: allowlist secret
+    );
+
+    await vi.waitFor(() => {
+      expect(logErrorMock).toHaveBeenCalledWith(expect.stringContaining("gateway connect failed:"));
+    });
+    const logged = String(logErrorMock.mock.calls.at(-1)?.[0] ?? "");
+    expect(logged).toContain("wss://gateway.example/ws?token=*** failed with 401");
+    expect(logged).toContain("from remote gateway");
+    expect(logged).not.toContain("secret-token");
+    client.stop();
+  });
+
+  it("forces secret redaction for connect failure logs when general log redaction is off", async () => {
+    readLoggingConfigMock.mockReturnValue({ redactSensitive: "off" });
+    const client = new GatewayClient({
+      url: "ws://127.0.0.1:18789",
+      token: "shared-token",
+      deviceIdentity: null,
+    });
+
+    const { ws, connect } = startClientAndConnect({ client });
+    emitConnectFailure(
+      ws,
+      connect.id,
+      { code: "AUTH_UNAUTHORIZED" },
+      "Authorization: Bearer sk-disabledredaction1234567890abcd", // pragma: allowlist secret
+    );
+
+    await vi.waitFor(() => {
+      expect(logErrorMock).toHaveBeenCalledWith(expect.stringContaining("gateway connect failed:"));
+    });
+    const logged = String(logErrorMock.mock.calls.at(-1)?.[0] ?? "");
+    expect(logged).toContain("Authorization: Bearer");
+    expect(logged).not.toContain("sk-disabledredaction1234567890abcd");
+    client.stop();
   });
 
   it("uses explicit shared password and does not inject stored device token", () => {
