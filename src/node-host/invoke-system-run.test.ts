@@ -48,7 +48,9 @@ describe("handleSystemRunInvoke mac app exec host routing", () => {
   const sharedRuntimeBins = new Set<string>();
 
   beforeAll(() => {
-    sharedFixtureRoot = fs.mkdtempSync(path.join(os.tmpdir(), "openclaw-node-host-fixtures-"));
+    sharedFixtureRoot = fs.realpathSync(
+      fs.mkdtempSync(path.join(os.tmpdir(), "openclaw-node-host-fixtures-")),
+    );
     sharedOpenClawHome = path.join(sharedFixtureRoot, "openclaw-home");
     sharedRuntimeBinDir = path.join(sharedFixtureRoot, "bin");
     fs.mkdirSync(sharedOpenClawHome, { recursive: true });
@@ -785,7 +787,7 @@ describe("handleSystemRunInvoke mac app exec host routing", () => {
               },
               agents: {
                 main: {
-                  allowlist: [{ pattern: link }],
+                  allowlist: [{ pattern: expected }],
                 },
               },
             },
@@ -1378,7 +1380,7 @@ describe("handleSystemRunInvoke mac app exec host routing", () => {
           expectInvokeOk(benign.sendInvokeResult, { payloadContains: "awk-ok" });
           const allowlist = loadExecApprovals().agents?.main?.allowlist ?? [];
           expect(allowlist).toHaveLength(1);
-          expect(allowlist[0]?.pattern).toBe(executablePath);
+          expect(allowlist[0]?.pattern).toBe(fs.realpathSync(executablePath));
 
           const malicious = await runSystemInvoke({
             preferMacAppExecHost: false,
@@ -1464,7 +1466,7 @@ describe("handleSystemRunInvoke mac app exec host routing", () => {
         approvals: createAllowlistOnMissApprovals({
           agents: {
             main: {
-              allowlist: [{ pattern: scriptPath }],
+              allowlist: [{ pattern: fs.realpathSync(scriptPath) }],
             },
           },
         }),

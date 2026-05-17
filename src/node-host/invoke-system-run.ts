@@ -11,7 +11,7 @@ import {
   hasDurableExecApproval,
   persistAllowAlwaysPatterns,
   recordAllowlistMatchesUse,
-  resolveApprovalAuditCandidatePath,
+  resolveApprovalAuditTrustPath,
   resolveExecApprovals,
   type ExecAllowlistEntry,
   type ExecAsk,
@@ -639,10 +639,7 @@ async function executeSystemRunPhase(
     agentId: phase.agentId,
     matches: phase.allowlistMatches,
     command: phase.commandText,
-    resolvedPath: resolveApprovalAuditCandidatePath(
-      phase.segments[0]?.resolution ?? null,
-      phase.cwd,
-    ),
+    resolvedPath: resolveApprovalAuditTrustPath(phase.segments[0]?.resolution ?? null, phase.cwd),
   });
 
   if (phase.needsScreenRecording) {
