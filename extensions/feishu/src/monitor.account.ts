@@ -29,6 +29,7 @@ import { getMessageFeishu } from "./send.js";
 import { getFeishuSequentialKey } from "./sequential-key.js";
 import { createFeishuThreadBindingManager } from "./thread-bindings.js";
 import type { FeishuChatType, ResolvedFeishuAccount } from "./types.js";
+import { wrapHandlerWithGate, setGateLogger } from "../../src/supervisor-gate/index.js";
 
 const FEISHU_REACTION_VERIFY_TIMEOUT_MS = 1_500;
 
@@ -283,145 +284,190 @@ function registerEventHandlers(
     }
   };
 
+  // Supervisor Gate: wire up logger
+  setGateLogger((...args: unknown[]) => log(...args));
+
   eventDispatcher.register({
-    "im.message.receive_v1": createFeishuMessageReceiveHandler({
-      cfg,
-      core: getFeishuRuntime(),
+    "im.message.receive_v1": wrapHandlerWithGate(
+      "im.message.receive_v1",
+      createFeishuMessageReceiveHandler({
+        cfg,
+        core: getFeishuRuntime(),
+        accountId,
+        runtime,
+        chatHistories,
+        fireAndForget,
+        handleMessage: handleFeishuMessage,
+        resolveDebounceText: ({ event, botOpenId, botName }) =>
+          parseFeishuMessageEvent(event, botOpenId, botName).content,
+        hasProcessedMessage: hasProcessedFeishuMessage,
+        recordProcessedMessage: recordProcessedFeishuMessage,
+        getBotOpenId: (id) => botOpenIds.get(id),
+        getBotName: (id) => botNames.get(id),
+        resolveSequentialKey: getFeishuSequentialKey,
+      }),
       accountId,
-      runtime,
-      chatHistories,
-      fireAndForget,
-      handleMessage: handleFeishuMessage,
-      resolveDebounceText: ({ event, botOpenId, botName }) =>
-        parseFeishuMessageEvent(event, botOpenId, botName).content,
-      hasProcessedMessage: hasProcessedFeishuMessage,
-      recordProcessedMessage: recordProcessedFeishuMessage,
-      getBotOpenId: (id) => botOpenIds.get(id),
-      getBotName: (id) => botNames.get(id),
-      resolveSequentialKey: getFeishuSequentialKey,
-    }),
+    ),
     "im.message.message_read_v1": async () => {
       // Ignore read receipts
     },
-    "im.chat.member.bot.added_v1": async (data) => {
-      try {
-        const event = parseFeishuBotAddedEventPayload(data);
-        if (!event) {
-          return;
-        }
-        log(`feishu[${accountId}]: bot added to chat ${event.chat_id}`);
-      } catch (err) {
-        error(`feishu[${accountId}]: error handling bot added event: ${String(err)}`);
-      }
-    },
-    "im.chat.member.bot.deleted_v1": async (data) => {
-      try {
-        const chatId = parseFeishuBotRemovedChatId(data);
-        if (!chatId) {
-          return;
-        }
-        log(`feishu[${accountId}]: bot removed from chat ${chatId}`);
-      } catch (err) {
-        error(`feishu[${accountId}]: error handling bot removed event: ${String(err)}`);
-      }
-    },
-    "drive.notice.comment_add_v1": createFeishuDriveCommentNoticeHandler({
-      cfg,
-      accountId,
-      runtime,
-      fireAndForget,
-    }),
-    "im.message.reaction.created_v1": async (data) => {
-      await runFeishuHandler({
-        errorMessage: `feishu[${accountId}]: error handling reaction event`,
-        task: async () => {
-          const event = data as FeishuReactionCreatedEvent;
-          const myBotId = botOpenIds.get(accountId);
-          const syntheticEvent = await resolveReactionSyntheticEvent({
-            cfg,
-            accountId,
-            event,
-            botOpenId: myBotId,
-            logger: log,
-          });
-          if (!syntheticEvent) {
+    "im.chat.member.bot.added_v1": wrapHandlerWithGate(
+      "im.chat.member.bot.added_v1",
+      async (data) => {
+        try {
+          const event = parseFeishuBotAddedEventPayload(data);
+          if (!event) {
             return;
           }
-          const promise = handleFeishuMessage({
-            cfg,
-            event: syntheticEvent,
-            botOpenId: myBotId,
-            botName: botNames.get(accountId),
-            runtime,
-            chatHistories,
-            accountId,
-          });
-          await promise;
-        },
-      });
-    },
-    "im.message.reaction.deleted_v1": async (data) => {
-      await runFeishuHandler({
-        errorMessage: `feishu[${accountId}]: error handling reaction removal event`,
-        task: async () => {
-          const event = data as FeishuReactionDeletedEvent;
-          const myBotId = botOpenIds.get(accountId);
-          const syntheticEvent = await resolveReactionSyntheticEvent({
-            cfg,
-            accountId,
-            event,
-            botOpenId: myBotId,
-            logger: log,
-            action: "deleted",
-          });
-          if (!syntheticEvent) {
+          log(`feishu[${accountId}]: bot added to chat ${event.chat_id}`);
+        } catch (err) {
+          error(`feishu[${accountId}]: error handling bot added event: ${String(err)}`);
+        }
+      },
+      accountId,
+    ),
+    "im.chat.member.bot.deleted_v1": wrapHandlerWithGate(
+      "im.chat.member.bot.deleted_v1",
+      async (data) => {
+        try {
+          const chatId = parseFeishuBotRemovedChatId(data);
+          if (!chatId) {
             return;
           }
-          const promise = handleFeishuMessage({
-            cfg,
-            event: syntheticEvent,
-            botOpenId: myBotId,
-            botName: botNames.get(accountId),
-            runtime,
-            chatHistories,
-            accountId,
-          });
-          await promise;
-        },
-      });
-    },
-    "application.bot.menu_v6": createFeishuBotMenuHandler({
-      cfg,
-      accountId,
-      runtime,
-      chatHistories,
-      fireAndForget,
-    }),
-    "card.action.trigger": async (data: unknown) => {
-      try {
-        const event = parseFeishuCardActionEventPayload(data);
-        if (!event) {
-          error(`feishu[${accountId}]: ignoring malformed card action payload`);
-          return;
+          log(`feishu[${accountId}]: bot removed from chat ${chatId}`);
+        } catch (err) {
+          error(`feishu[${accountId}]: error handling bot removed event: ${String(err)}`);
         }
-        const promise = handleFeishuCardAction({
-          cfg,
-          event,
-          botOpenId: botOpenIds.get(accountId),
-          runtime,
-          accountId,
+      },
+      accountId,
+    ),
+    "drive.notice.comment_add_v1": wrapHandlerWithGate(
+      "drive.notice.comment_add_v1",
+      createFeishuDriveCommentNoticeHandler({
+        cfg,
+        accountId,
+        runtime,
+        fireAndForget,
+      }),
+      accountId,
+    ),
+    "im.message.reaction.created_v1": wrapHandlerWithGate(
+      "im.message.reaction.created_v1",
+      async (data) => {
+        await runFeishuHandler({
+          errorMessage: `feishu[${accountId}]: error handling reaction event`,
+          task: async () => {
+            const event = data as FeishuReactionCreatedEvent;
+            const myBotId = botOpenIds.get(accountId);
+            const syntheticEvent = await resolveReactionSyntheticEvent({
+              cfg,
+              accountId,
+              event,
+              botOpenId: myBotId,
+              logger: log,
+            });
+            if (!syntheticEvent) {
+              return;
+            }
+            const promise = handleFeishuMessage({
+              cfg,
+              event: syntheticEvent,
+              botOpenId: myBotId,
+              botName: botNames.get(accountId),
+              runtime,
+              chatHistories,
+              accountId,
+            });
+            await promise;
+          },
         });
-        if (fireAndForget) {
-          promise.catch((err) => {
-            error(`feishu[${accountId}]: error handling card action: ${String(err)}`);
+      },
+      accountId,
+    ),
+    "im.message.reaction.deleted_v1": wrapHandlerWithGate(
+      "im.message.reaction.deleted_v1",
+      async (data) => {
+        await runFeishuHandler({
+          errorMessage: `feishu[${accountId}]: error handling reaction removal event`,
+          task: async () => {
+            const event = data as FeishuReactionDeletedEvent;
+            const myBotId = botOpenIds.get(accountId);
+            const syntheticEvent = await resolveReactionSyntheticEvent({
+              cfg,
+              accountId,
+              event,
+              botOpenId: myBotId,
+              logger: log,
+              action: "deleted",
+            });
+            if (!syntheticEvent) {
+              return;
+            }
+            const promise = handleFeishuMessage({
+              cfg,
+              event: syntheticEvent,
+              botOpenId: myBotId,
+              botName: botNames.get(accountId),
+              runtime,
+              chatHistories,
+              accountId,
+            });
+            await promise;
+          },
+        });
+      },
+      accountId,
+    ),
+    "application.bot.menu_v6": wrapHandlerWithGate(
+      "application.bot.menu_v6",
+      createFeishuBotMenuHandler({
+        cfg,
+        accountId,
+        runtime,
+        chatHistories,
+        fireAndForget,
+      }),
+      accountId,
+    ),
+    "card.action.trigger": wrapHandlerWithGate(
+      "card.action.trigger",
+      async (data: unknown) => {
+        try {
+          const event = parseFeishuCardActionEventPayload(data);
+          if (!event) {
+            error(`feishu[${accountId}]: ignoring malformed card action payload`);
+            return;
+          }
+          const promise = handleFeishuCardAction({
+            cfg,
+            event,
+            botOpenId: botOpenIds.get(accountId),
+            runtime,
+            accountId,
           });
-        } else {
-          await promise;
+          if (fireAndForget) {
+            promise.catch((err) => {
+              error(`feishu[${accountId}]: error handling card action: ${String(err)}`);
+            });
+          } else {
+            await promise;
+          }
+        } catch (err) {
+          error(`feishu[${accountId}]: error handling card action: ${String(err)}`);
         }
-      } catch (err) {
-        error(`feishu[${accountId}]: error handling card action: ${String(err)}`);
-      }
-    },
+      },
+      accountId,
+    ),
+    // message recall/withdrawal — intercepted by Supervisor Gate, does NOT enter queue
+    "im.message.recall_v1": wrapHandlerWithGate(
+      "im.message.recall_v1",
+      async (data) => {
+        // the Gate's wrapHandlerWithGate will intercept this and handle it
+        // if Gate is disabled, this is a no-op (recalls are not processed by existing pipeline)
+        log(`feishu[${accountId}]: message recall event received`);
+      },
+      accountId,
+    ),
   });
 }
 
