@@ -10,7 +10,6 @@ export {
   type SseDoneEvent,
   type SseEventData,
   type SseEvent,
-  type SseEventEnvelope,
   createSseEvent,
   formatSseMessage,
   parseSseMessage,

@@ -1,6 +1,6 @@
 // adapter that bridges agent state machine to feishu status bar updates
-import type { AgentState, AgentStateChangeEvent } from "../../src/agent-state/types"
-import { AGENT_STATE_LABELS, AGENT_STATE_COLORS } from "../../src/agent-state/types"
+import type { AgentState, AgentStateChangeEvent } from "./types"
+import { AGENT_STATE_LABELS, AGENT_STATE_COLORS } from "./types"
 import type { FeishuStreamingSession } from "../extensions/feishu/src/streaming-card"
 
 // map agent state to feishu status bar content

@@ -8,7 +8,7 @@ import type {
 
 // ─── Agent-Doc: Document Operations ───
 
-const agentDocCapabilities: CapabilitySpec[] = [
+const agent_doc_capabilities: CapabilitySpec[] = [
   {
     domain: "feishu_doc",
     actions: ["read", "write", "append", "insert", "create", "list_blocks", "update_block", "delete_block", "create_table", "write_table_cells", "upload_image"],
@@ -26,7 +26,7 @@ const agentDocCapabilities: CapabilitySpec[] = [
   },
 ]
 
-const agentDocBoundaries: BoundarySpec[] = [
+const agent_doc_boundaries: BoundarySpec[] = [
   {
     domain: "ci",
     reason: "CI operations require agent-ci",
@@ -39,7 +39,7 @@ const agentDocBoundaries: BoundarySpec[] = [
   },
 ]
 
-const agentDocRejectPatterns: RejectPattern[] = [
+const agent_doc_reject_patterns: RejectPattern[] = [
   {
     pattern: "CI|构建|部署|pipeline",
     reason: "CI operations are handled by agent-ci",
@@ -47,25 +47,25 @@ const agentDocRejectPatterns: RejectPattern[] = [
   },
 ]
 
-const agentDocTaskTypes: TaskType[] = ["create", "update", "query"]
+const agent_doc_task_types: TaskType[] = ["create", "update", "query"]
 
 export const AGENT_DOC_MANIFEST: AgentManifest = {
   id: "agent-doc",
   label: "Document Operations",
   description: "Feishu document read, write, append, insert, create, wiki, drive operations",
-  capabilities: agentDocCapabilities,
-  boundaries: agentDocBoundaries,
-  rejectPatterns: agentDocRejectPatterns,
+  capabilities: agent_doc_capabilities,
+  boundaries: agent_doc_boundaries,
+  rejectPatterns: agent_doc_reject_patterns,
   toolIds: ["feishu_doc", "feishu_doc_legacy", "feishu_wiki", "feishu_drive", "feishu_perm", "read", "write", "edit"],
   priority: 80,
-  taskTypes: agentDocTaskTypes,
+  taskTypes: agent_doc_task_types,
   keywords: ["文档", "doc", "wiki", "知识库", "drive", "云文档", "写入", "创建文档"],
   summaryManifest: "Feishu doc/wiki/drive operations",
 }
 
 // ─── Agent-Data: Data & Query ───
 
-const agentDataCapabilities: CapabilitySpec[] = [
+const agent_data_capabilities: CapabilitySpec[] = [
   {
     domain: "feishu_bitable",
     actions: ["get_meta", "list_fields", "list_records", "create_record"],
@@ -83,7 +83,7 @@ const agentDataCapabilities: CapabilitySpec[] = [
   },
 ]
 
-const agentDataBoundaries: BoundarySpec[] = [
+const agent_data_boundaries: BoundarySpec[] = [
   {
     domain: "feishu_doc",
     reason: "Doc operations require agent-doc",
@@ -96,32 +96,32 @@ const agentDataBoundaries: BoundarySpec[] = [
   },
 ]
 
-const agentDataRejectPatterns: RejectPattern[] = [
+const agent_data_reject_patterns: RejectPattern[] = [
   {
     pattern: "文档|写文档|CI|构建",
     reason: "Outside data/query scope",
   },
 ]
 
-const agentDataTaskTypes: TaskType[] = ["query"]
+const agent_data_task_types: TaskType[] = ["query"]
 
 export const AGENT_DATA_MANIFEST: AgentManifest = {
   id: "agent-data",
   label: "Data & Query",
   description: "Feishu bitable operations, data search, web search, chat member lookup",
-  capabilities: agentDataCapabilities,
-  boundaries: agentDataBoundaries,
-  rejectPatterns: agentDataRejectPatterns,
+  capabilities: agent_data_capabilities,
+  boundaries: agent_data_boundaries,
+  rejectPatterns: agent_data_reject_patterns,
   toolIds: ["feishu_bitable", "feishu_chat", "web_search", "web_fetch", "x_search", "memory_search", "memory_get"],
   priority: 70,
-  taskTypes: agentDataTaskTypes,
+  taskTypes: agent_data_task_types,
   keywords: ["查询", "搜索", "bitable", "多维表格", "数据", "成员", "搜索网页"],
   summaryManifest: "Bitable, search, web lookup",
 }
 
 // ─── Agent-CI: CI/CD Management ───
 
-const agentCiCapabilities: CapabilitySpec[] = [
+const agent_ci_capabilities: CapabilitySpec[] = [
   {
     domain: "ci",
     actions: ["build", "deploy", "schedule", "monitor"],
@@ -134,7 +134,7 @@ const agentCiCapabilities: CapabilitySpec[] = [
   },
 ]
 
-const agentCiBoundaries: BoundarySpec[] = [
+const agent_ci_boundaries: BoundarySpec[] = [
   {
     domain: "feishu_doc",
     reason: "Doc operations require agent-doc",
@@ -147,32 +147,32 @@ const agentCiBoundaries: BoundarySpec[] = [
   },
 ]
 
-const agentCiRejectPatterns: RejectPattern[] = [
+const agent_ci_reject_patterns: RejectPattern[] = [
   {
     pattern: "文档|查询|搜索网页|写文档",
     reason: "Outside CI scope",
   },
 ]
 
-const agentCiTaskTypes: TaskType[] = ["create", "update", "query"]
+const agent_ci_task_types: TaskType[] = ["create", "update", "query"]
 
 export const AGENT_CI_MANIFEST: AgentManifest = {
   id: "agent-ci",
   label: "CI/CD Management",
   description: "Build tasks, CI pipeline operations, cron scheduling, gateway control",
-  capabilities: agentCiCapabilities,
-  boundaries: agentCiBoundaries,
-  rejectPatterns: agentCiRejectPatterns,
+  capabilities: agent_ci_capabilities,
+  boundaries: agent_ci_boundaries,
+  rejectPatterns: agent_ci_reject_patterns,
   toolIds: ["exec", "process", "gateway", "cron", "sessions_list", "sessions_spawn"],
   priority: 60,
-  taskTypes: agentCiTaskTypes,
+  taskTypes: agent_ci_task_types,
   keywords: ["构建", "CI", "CD", "部署", "build", "deploy", "pipeline", "任务", "cron"],
   summaryManifest: "Build, deploy, cron, gateway",
 }
 
 // ─── Agent-Chat: General Chat (fallback) ───
 
-const agentChatCapabilities: CapabilitySpec[] = [
+const agent_chat_capabilities: CapabilitySpec[] = [
   {
     domain: "general",
     actions: ["chat", "explain", "answer", "summarize"],
@@ -180,22 +180,22 @@ const agentChatCapabilities: CapabilitySpec[] = [
   },
 ]
 
-const agentChatBoundaries: BoundarySpec[] = []
+const agent_chat_boundaries: BoundarySpec[] = []
 
-const agentChatRejectPatterns: RejectPattern[] = []
+const agent_chat_reject_patterns: RejectPattern[] = []
 
-const agentChatTaskTypes: TaskType[] = ["chat"]
+const agent_chat_task_types: TaskType[] = ["chat"]
 
 export const AGENT_CHAT_MANIFEST: AgentManifest = {
   id: "agent-chat",
   label: "General Chat",
   description: "General conversation, Q&A, explanation, simple tasks without specific domain",
-  capabilities: agentChatCapabilities,
-  boundaries: agentChatBoundaries,
-  rejectPatterns: agentChatRejectPatterns,
+  capabilities: agent_chat_capabilities,
+  boundaries: agent_chat_boundaries,
+  rejectPatterns: agent_chat_reject_patterns,
   toolIds: ["message", "image", "memory_search", "memory_get", "session_status"],
   priority: 10,
-  taskTypes: agentChatTaskTypes,
+  taskTypes: agent_chat_task_types,
   keywords: ["问答", "解释", "帮助", "通用"],
   summaryManifest: "General Q&A and conversation",
 }

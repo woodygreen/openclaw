@@ -2,7 +2,6 @@ import { describe, it, expect } from "vitest"
 import {
   SseEventType,
   type SseEvent,
-  type SseEventEnvelope,
   type SseStartEvent,
   type SseTokenEvent,
   type SseToolCallEvent,
@@ -130,6 +129,12 @@ describe("SSE Event Types", () => {
 
   it("should return null for invalid SSE message", () => {
     const parsed = parseSseMessage("not valid sse")
+    expect(parsed).toBeNull()
+  })
+
+  it("should return null for unrecognized event type", () => {
+    const raw = "event: unknown_type\ndata: {\"runId\":\"run-1\"}\n\n"
+    const parsed = parseSseMessage(raw)
     expect(parsed).toBeNull()
   })
 

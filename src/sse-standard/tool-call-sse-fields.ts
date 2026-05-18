@@ -32,35 +32,31 @@ export type ToolResultSseFields = {
 }
 
 export function createToolCallSseEvent(fields: ToolCallSseFields): SseEvent {
-  return {
-    type: SseEventType.ToolCall,
-    data: {
-      runId: fields.runId,
-      sessionId: fields.sessionId,
-      agentId: fields.agentId,
-      toolCallId: fields.toolCallId,
-      toolName: fields.toolName,
-      arguments: fields.arguments,
-      timestamp: fields.timestamp ?? Date.now(),
-    },
+  const data: SseToolCallEvent = {
+    runId: fields.runId,
+    sessionId: fields.sessionId,
+    agentId: fields.agentId,
+    toolCallId: fields.toolCallId,
+    toolName: fields.toolName,
+    arguments: fields.arguments,
+    timestamp: fields.timestamp ?? Date.now(),
   }
+  return { type: SseEventType.ToolCall, data }
 }
 
 export function createToolResultSseEvent(fields: ToolResultSseFields): SseEvent {
-  return {
-    type: SseEventType.ToolResult,
-    data: {
-      runId: fields.runId,
-      sessionId: fields.sessionId,
-      agentId: fields.agentId,
-      toolCallId: fields.toolCallId,
-      status: fields.status,
-      result: fields.result,
-      errorCode: fields.errorCode ?? undefined,
-      errorMessage: fields.errorMessage ?? undefined,
-      timestamp: fields.timestamp ?? Date.now(),
-    },
+  const data: SseToolResultEvent = {
+    runId: fields.runId,
+    sessionId: fields.sessionId,
+    agentId: fields.agentId,
+    toolCallId: fields.toolCallId,
+    status: fields.status,
+    result: fields.result,
+    timestamp: fields.timestamp ?? Date.now(),
   }
+  if (fields.errorCode !== undefined) data.errorCode = fields.errorCode
+  if (fields.errorMessage !== undefined) data.errorMessage = fields.errorMessage
+  return { type: SseEventType.ToolResult, data }
 }
 
 const TOOL_CALL_REQUIRED_FIELDS = [

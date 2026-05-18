@@ -115,6 +115,8 @@ export type ExecutionTrace = {
   data?: Record<string, unknown>
 }
 
+// in-memory execution state — Map fields are not JSON-serializable;
+// use toExecutionBoardJSON / fromExecutionBoardJSON adapters if persistence is needed
 export type ExecutionBoard = {
   agents: Map<string, AgentExecState>
   pendingQueue: SupervisorTask[]

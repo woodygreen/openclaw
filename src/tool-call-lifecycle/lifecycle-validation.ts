@@ -71,8 +71,16 @@ export function validateToolCallPermission(
   request: ToolCallRequest,
   config: PermissionValidationConfig,
 ): PermissionValidationResult {
+  // default-deny: missing allowlist means no tools are permitted
+  if (config.allowedTools === undefined) {
+    return {
+      allowed: false,
+      reason: "no allowed tool list configured — default deny",
+      policy: "default_deny",
+    }
+  }
   // check if tool is in allowlist
-  if (config.allowedTools && !config.allowedTools.includes(request.toolName)) {
+  if (!config.allowedTools.includes(request.toolName)) {
     return {
       allowed: false,
       reason: `tool ${request.toolName} is not in the allowed list`,
@@ -89,7 +97,7 @@ export function validateToolCallPermission(
       }
     }
   }
-  return { allowed: true, policy: "default" }
+  return { allowed: true, policy: "allowlist" }
 }
 
 export function formatToolResult(result: ToolCallResult): string {

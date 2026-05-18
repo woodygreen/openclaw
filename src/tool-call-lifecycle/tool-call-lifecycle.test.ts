@@ -231,7 +231,7 @@ describe("ToolCallLifecycleTracker", () => {
     })
 
     const trace = tracker.getTrace("run-5")
-    expect(trace!.isComplete()).toBe(true)
+    expect(trace!.isTerminal()).toBe(true)
   })
 
   it("should detect incomplete lifecycle", () => {
@@ -252,7 +252,7 @@ describe("ToolCallLifecycleTracker", () => {
     })
 
     const trace = tracker.getTrace("run-6")
-    expect(trace!.isComplete()).toBe(false)
+    expect(trace!.isTerminal()).toBe(false)
   })
 
   it("should list all tracked runs", () => {
@@ -330,6 +330,22 @@ describe("ToolCallLifecycle Validation", () => {
     })
     expect(result.allowed).toBe(false)
     expect(result.reason).toContain("gateway")
+  })
+
+  it("should default-deny when allowedTools is undefined", () => {
+    const request: ToolCallRequest = {
+      toolCallId: "tc-5",
+      toolName: "web_search",
+      arguments: { query: "test" },
+      sessionId: "sess-1",
+      agentId: "agent-1",
+      runId: "run-1",
+      timestamp: Date.now(),
+    }
+    const result = validateToolCallPermission(request, {})
+    expect(result.allowed).toBe(false)
+    expect(result.policy).toBe("default_deny")
+    expect(result.reason).toContain("default deny")
   })
 
   it("should format tool result with standard fields", () => {

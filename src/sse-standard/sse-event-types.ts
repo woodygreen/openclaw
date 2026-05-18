@@ -87,17 +87,12 @@ export type SseEventData =
 
 export type SseEvent = {
   type: SseEventType
-  data: Record<string, unknown>
-}
-
-export type SseEventEnvelope = {
-  type: SseEventType
-  data: Record<string, unknown>
+  data: SseEventData
 }
 
 export function createSseEvent(
   type: SseEventType,
-  data: Record<string, unknown>,
+  data: SseEventData,
 ): SseEvent {
   return {
     type,
@@ -128,6 +123,9 @@ export function parseSseMessage(raw: string): SseEvent | null {
   }
 
   if (!eventType || !dataLine) return null
+
+  const VALID_EVENT_TYPES = new Set<string>(Object.values(SseEventType))
+  if (!VALID_EVENT_TYPES.has(eventType)) return null
 
   try {
     const data = JSON.parse(dataLine)
