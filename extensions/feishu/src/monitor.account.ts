@@ -29,7 +29,7 @@ import { getMessageFeishu } from "./send.js";
 import { getFeishuSequentialKey } from "./sequential-key.js";
 import { createFeishuThreadBindingManager } from "./thread-bindings.js";
 import type { FeishuChatType, ResolvedFeishuAccount } from "./types.js";
-import { wrapHandlerWithGate, setGateLogger } from "../../src/supervisor-gate/index.js";
+import { wrapHandlerWithGate, setGateLogger } from "openclaw/plugin-sdk/supervisor-gate";
 
 const FEISHU_REACTION_VERIFY_TIMEOUT_MS = 1_500;
 

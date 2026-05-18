@@ -302,5 +302,6 @@
   "webhook-path",
   "web-media",
   "zalouser",
+  "supervisor-gate",
   "zod"
 ]

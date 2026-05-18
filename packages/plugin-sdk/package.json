@@ -240,6 +240,10 @@
       "types": "./dist/src/plugin-sdk/text-utility-runtime.d.ts",
       "default": "./src/text-utility-runtime.ts"
     },
+    "./supervisor-gate": {
+      "types": "./dist/src/plugin-sdk/supervisor-gate.d.ts",
+      "default": "./src/supervisor-gate.ts"
+    },
     "./zod": {
       "types": "./dist/src/plugin-sdk/zod.d.ts",
       "default": "./src/zod.ts"
