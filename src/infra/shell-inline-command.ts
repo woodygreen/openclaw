@@ -199,6 +199,18 @@ export function hasPosixLoginStartupBeforeInlineCommand(
   return false;
 }
 
+export function resolvePowerShellInlineCommandMatch(argv: string[]): {
+  command: string | null;
+  valueTokenIndex: number | null;
+} {
+  return resolveInlineCommandMatch(argv, POWERSHELL_INLINE_COMMAND_FLAGS);
+}
+
+export function isPowerShellInlineFileCommandFlag(token: string): boolean {
+  const lower = token.toLowerCase();
+  return lower === "-f" || lower === "-file";
+}
+
 export function hasFishInitCommandOption(argv: string[]): boolean {
   for (let i = 1; i < argv.length; i += 1) {
     const token = argv[i]?.trim();

@@ -88,6 +88,32 @@ function isCrossContextTarget(params: {
   return normalizedTarget !== normalizedCurrent;
 }
 
+export function resolveAllowedMessageActions(params: {
+  cfg: OpenClawConfig;
+  agentId?: string;
+}): string[] | null {
+  if (!params.agentId) {
+    return null;
+  }
+  const agentList = params.cfg.agents?.list;
+  if (!Array.isArray(agentList)) {
+    return null;
+  }
+  const agent = agentList.find((a) => a.id === params.agentId);
+  if (!agent) {
+    return null;
+  }
+  const messageActions = (agent.tools as Record<string, unknown> | undefined)?.message as
+    | Record<string, unknown>
+    | undefined;
+  const actionsConfig = messageActions?.actions as Record<string, unknown> | undefined;
+  const allow = actionsConfig?.allow;
+  if (!Array.isArray(allow)) {
+    return null;
+  }
+  return allow as string[];
+}
+
 export function enforceCrossContextPolicy(params: {
   channel: ChannelId;
   action: ChannelMessageActionName;
