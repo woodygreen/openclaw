@@ -30,6 +30,7 @@ import { getFeishuSequentialKey } from "./sequential-key.js";
 import { createFeishuThreadBindingManager } from "./thread-bindings.js";
 import type { FeishuChatType, ResolvedFeishuAccount } from "./types.js";
 import { wrapHandlerWithGate, setGateLogger } from "openclaw/plugin-sdk/supervisor-gate";
+import type { GateCallbacks } from "openclaw/plugin-sdk/supervisor-gate";
 
 const FEISHU_REACTION_VERIFY_TIMEOUT_MS = 1_500;
 
@@ -287,6 +288,60 @@ function registerEventHandlers(
   // Supervisor Gate: wire up logger
   setGateLogger((...args: unknown[]) => log(...args));
 
+  // Supervisor Gate: callbacks for direct_execute, interrupt_request, etc.
+  const gateCallbacks: GateCallbacks = {
+    // direct_execute: for slash commands, bypass queue and handle via original handler.
+    // The original handler includes command-gating which processes /status, /help etc.
+    // After handling, the dedup system will prevent re-processing.
+    directExecuteHandler: async (data: unknown) => {
+      // For slash commands, we call the original message handler directly.
+      // The handler's command-gating system will detect the slash command
+      // and handle it immediately (no agent turn needed).
+      // We don't need special handling here — the original handler does it all.
+      // The key difference: this bypasses the message buffer entirely,
+      // so slash commands execute without waiting for buffered messages.
+      const messageHandler = createFeishuMessageReceiveHandler({
+        cfg,
+        core: getFeishuRuntime(),
+        accountId,
+        runtime,
+        chatHistories,
+        fireAndForget,
+        handleMessage: handleFeishuMessage,
+        resolveDebounceText: ({ event, botOpenId, botName }) =>
+          parseFeishuMessageEvent(event, botOpenId, botName).content,
+        hasProcessedMessage: hasProcessedFeishuMessage,
+        recordProcessedMessage: recordProcessedFeishuMessage,
+        getBotOpenId: (id) => botOpenIds.get(id),
+        getBotName: (id) => botNames.get(id),
+        resolveSequentialKey: getFeishuSequentialKey,
+      })
+      await messageHandler(data)
+    },
+    // markMessageHandled: mark a message as processed in the Feishu dedup system
+    // so the normal pipeline skips it when it arrives later
+    markMessageHandled: async (messageId: string) => {
+      await recordProcessedFeishuMessage(messageId, "global", log)
+    },
+    // sendQuickReply: send a quick acknowledgment for interrupt_request
+    sendQuickReply: async (params: { chatId: string; text: string; accountId: string }) => {
+      try {
+        const { chatId, text, accountId: paramAccountId } = params
+        // Send a quick text message to the chat using the Feishu API
+        // This bypasses the agent pipeline entirely — it's a direct API call
+        const { sendMessageFeishu } = await import("./send.js")
+        await sendMessageFeishu({
+          cfg,
+          to: chatId,
+          text,
+          accountId: paramAccountId,
+        })
+      } catch (err) {
+        error(`feishu[${accountId}]: gate callback: quick reply failed: ${String(err)}`)
+      }
+    },
+  };
+
   eventDispatcher.register({
     "im.message.receive_v1": wrapHandlerWithGate(
       "im.message.receive_v1",
@@ -307,6 +362,7 @@ function registerEventHandlers(
         resolveSequentialKey: getFeishuSequentialKey,
       }),
       accountId,
+      gateCallbacks,
     ),
     "im.message.message_read_v1": async () => {
       // Ignore read receipts

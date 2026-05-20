@@ -15,6 +15,29 @@ function isSlashCommand(text: string): boolean {
   return trimmed.startsWith("/")
 }
 
+// ─── Interrupt Request Detection ───
+// User says "wait/no/stop/hold on" — wants to pause and supplement info
+
+const INTERRUPT_REQUEST_PATTERNS: RegExp[] = [
+  // Chinese patterns
+  /等一下/i, /等等/i, /等会/i, /稍等/i, /稍候/i,
+  /别急/i, /先别/i, /不要急/i,
+  /不对/i, /错了/i, /不是/i, /搞错了/i,
+  /打断/i, /插一下/i, /暂停/i, /停一下/i,
+  /等我有?重要/i, /有重要的事/i, /先处理/i,
+  // English patterns
+  /\bwait\b/i, /\bhold on\b/i, /\bhold up\b/i,
+  /\bstop\b/i, /\bnot right\b/i, /\bwrong\b/i,
+  /\bactually\b/i, /\bno wait\b/i, /\blet me\b/i,
+  /\binterrupt/i, /\bpause\b/i,
+]
+
+function isInterruptRequest(text: string): boolean {
+  const trimmed = text.trim()
+  if (!trimmed) return false
+  return INTERRUPT_REQUEST_PATTERNS.some((p) => p.test(trimmed))
+}
+
 // ─── Recall Event Detection ───
 
 function isRecallEvent(eventType: string): boolean {
@@ -107,7 +130,16 @@ export function classifyEvent(ctx: GateContext): ClassifiedIntent {
     }
   }
 
-  // Priority 2: recall/withdrawal event — WITHDRAW
+  // Priority 2: interrupt request — user wants to pause and supplement
+  // E.g. "等一下", "不对", "别急" — pause current processing, ask for supplement
+  if (ctx.messageText && isInterruptRequest(ctx.messageText)) {
+    return {
+      decision: "interrupt_request",
+      reason: `interrupt request detected — text="${ctx.messageText.substring(0, 30)}"`,
+    }
+  }
+
+  // Priority 3: recall/withdrawal event — WITHDRAW
   if (ctx.isRecallEvent || isRecallEvent(ctx.eventType)) {
     return {
       decision: "withdraw",
@@ -115,7 +147,7 @@ export function classifyEvent(ctx: GateContext): ClassifiedIntent {
     }
   }
 
-  // Priority 3: compound intent detection
+  // Priority 4: compound intent detection
   if (ctx.messageText) {
     for (const compound of COMPOUND_KEYWORD_PAIRS) {
       if (compound.trigger.test(ctx.messageText)) {
@@ -142,11 +174,11 @@ export function classifyEvent(ctx: GateContext): ClassifiedIntent {
     }
   }
 
-  // Priority 4: single-domain keyword (still simple_pass — existing pipeline handles routing)
+  // Priority 5: single-domain keyword (still simple_pass — existing pipeline handles routing)
   // We classify but don't change routing; the gate just passes through
   // Domain info is logged for observability but doesn't change behavior in Phase 1
 
-  // Priority 5: default — SIMPLE_PASS (backward compatible)
+  // Priority 6: default — SIMPLE_PASS (backward compatible)
   return {
     decision: "simple_pass",
     reason: "no special classification — passing through existing pipeline",

@@ -10,6 +10,10 @@ export {
 } from "./classifier.js"
 
 export {
+  GateMessageBuffer,
+} from "./buffer.js"
+
+export {
   parseWithdrawalEvent,
   markMessageRecalled,
   isMessageRecalled,
@@ -28,4 +32,6 @@ export type {
   CompoundPattern,
   DecompositionRule,
   DomainKeywordMap,
+  GateCallbacks,
+  BufferedMessage,
 } from "./types.js"

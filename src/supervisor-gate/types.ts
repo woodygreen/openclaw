@@ -6,10 +6,11 @@
 
 /** What the Supervisor Gate decides for an inbound event */
 export type SupervisorGateDecision =
-  | "direct_execute"  // slash commands — bypass everything, immediate dispatch
-  | "withdraw"        // message recall/withdrawal — intercept, don't enter queue
-  | "simple_pass"     // single-domain or unknown intent — pass through existing pipeline
-  | "compound_decompose"  // multi-domain intent — decompose into sub-tasks
+  | "direct_execute"       // slash commands — bypass everything, immediate dispatch
+  | "interrupt_request"    // user says "wait/no/stop" — pause, ask for supplement, then resume
+  | "withdraw"             // message recall/withdrawal — intercept, don't enter queue
+  | "simple_pass"          // single-domain or unknown intent — pass through existing pipeline
+  | "compound_decompose"   // multi-domain intent — decompose into sub-tasks
 
 // ─── Gate Context ───
 
@@ -114,4 +115,35 @@ export type DomainKeywordMap = {
     agentId: string
     domain: string
   }
+}
+
+// ─── Gate Callbacks ───
+
+/** Callbacks provided by the integration layer (monitor.account.ts)
+ *  to let the Gate interact with the message pipeline without importing core modules. */
+export type GateCallbacks = {
+  /** Handle a direct_execute event outside the normal pipeline.
+   *  Called for slash commands — bypasses queue entirely, handles command directly,
+   *  then marks the message as "already replied" in dedup. */
+  directExecuteHandler?: (data: unknown) => Promise<void>
+  /** Mark a message as already processed/handled in the dedup system,
+   *  so the normal pipeline skips it when it arrives later. */
+  markMessageHandled?: (messageId: string) => Promise<void>
+  /** Send a quick acknowledgment message to the chat (e.g. "好，是否有信息补充？").
+   *  Used for interrupt_request — tells user the gate is waiting for supplement. */
+  sendQuickReply?: (params: { chatId: string; text: string; accountId: string }) => Promise<void>
+}
+
+// ─── Message Buffer ───
+
+/** A buffered message waiting for merge */
+export type BufferedMessage = {
+  /** Raw event data from Lark SDK */
+  rawData: unknown
+  /** Parsed GateContext */
+  ctx: GateContext
+  /** Message text (if available) */
+  text?: string
+  /** Message ID (for dedup marking) */
+  messageId?: string
 }
