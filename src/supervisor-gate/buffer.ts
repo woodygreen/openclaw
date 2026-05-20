@@ -35,17 +35,18 @@ export class GateMessageBuffer {
 
   /** Add a message to the per-chat buffer. Starts or resets the debounce timer. */
   enqueue(msg: BufferedMessage): void {
-    const chatId = msg.ctx.chatId
-    if (!chatId) {
-      // no chatId — can't buffer, pass through immediately
+    // use chatId for group/topic chats, senderId-based key for P2P chats
+    const bufferKey = msg.ctx.chatId ?? (msg.ctx.senderId ? `p2p:${msg.ctx.accountId}:${msg.ctx.senderId}` : undefined)
+    if (!bufferKey) {
+      // no chatId or senderId — can't buffer, pass through immediately
       this.originalHandler(msg.rawData)
       return
     }
 
-    let buf = this.buffers.get(chatId)
+    let buf = this.buffers.get(bufferKey)
     if (!buf) {
       buf = { messages: [], timer: null }
-      this.buffers.set(chatId, buf)
+      this.buffers.set(bufferKey, buf)
     }
 
     buf.messages.push(msg)
@@ -55,7 +56,7 @@ export class GateMessageBuffer {
       clearTimeout(buf.timer)
     }
     buf.timer = setTimeout(() => {
-      this.flushForChat(chatId)
+      this.flushForChat(bufferKey)
     }, this.debounceMs)
   }
 

@@ -340,6 +340,23 @@ function registerEventHandlers(
         error(`feishu[${accountId}]: gate callback: quick reply failed: ${String(err)}`)
       }
     },
+    // steerSession: abort the currently active agent session for a chat
+    // when an interrupt_request is detected, so the user's correction takes priority
+    steerSession: async (params: { sessionKey: string; accountId: string }) => {
+      try {
+        const { callGatewayTool } = await import("openclaw/plugin-sdk/agent-harness-runtime")
+        const result = await callGatewayTool<{ ok: boolean; status: string }>(
+          "sessions.abort",
+          {},  // auto-resolve gateway URL and token from config
+          { key: params.sessionKey },
+        )
+        log(`feishu[${accountId}]: gate steerSession → sessions.abort for key=${params.sessionKey} → ok=${result.ok} status=${result.status}`)
+        return result.ok
+      } catch (err) {
+        error(`feishu[${accountId}]: gate callback: steerSession failed: ${String(err)}`)
+        return false
+      }
+    },
   };
 
   eventDispatcher.register({

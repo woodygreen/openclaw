@@ -241,9 +241,10 @@ export function wrapHandlerWithGate(
     if (result.decision === "direct_execute") {
       // flush any pending buffer for this chat first
       // so queued messages don't sit behind the command
-      if (ctx.chatId) {
+      const flushKey = ctx.chatId ?? (ctx.senderId ? `p2p:${accountId}:${ctx.senderId}` : undefined)
+      if (flushKey) {
         const buf = accountBuffers.get(accountId)
-        buf?.flushImmediate(ctx.chatId)
+        buf?.flushImmediate(flushKey)
       }
 
       // use directExecuteHandler callback if available
@@ -269,17 +270,23 @@ export function wrapHandlerWithGate(
     // ── interrupt_request: pause and collect supplement ──
     if (result.decision === "interrupt_request") {
       const chatId = ctx.chatId
-      if (!chatId) {
-        // no chatId — can't track interrupt state, fall through to simple_pass
+      const senderId = ctx.senderId
+      if (!chatId && !senderId) {
+        // no chatId or senderId — can't track interrupt state, fall through to simple_pass
         return originalHandler(data)
       }
 
+      // use chatId for group chats, senderId-based key for P2P chats
+      const interruptKey = chatId ?? `p2p:${accountId}:${senderId}`
+
       // flush any pending message buffer for this chat
       const buf = accountBuffers.get(accountId)
-      buf?.flushImmediate(chatId)
+      if (chatId) {
+        buf?.flushImmediate(chatId)
+      }
 
       // clear any existing interrupt state for this chat
-      const existing = interruptStates.get(chatId)
+      const existing = interruptStates.get(interruptKey)
       if (existing?.timer) {
         clearTimeout(existing.timer)
       }
@@ -290,25 +297,36 @@ export function wrapHandlerWithGate(
         supplements: [],
         timer: null,
         accountId,
-        chatId,
+        chatId: interruptKey,
+      }
+
+      // abort the currently running session for this chat
+      if (resolvedCallbacks.steerSession) {
+        const chatType = ctx.chatType ?? (chatId ? "group" : "p2p")
+        const sessionSuffix = chatType === "p2p" && senderId ? senderId : chatId
+        const sessionKey = `agent:main:feishu:${chatType}:${sessionSuffix}`
+        gateLog(`GATE: interrupt_request → steering session ${sessionKey}`)
+        void resolvedCallbacks.steerSession({ sessionKey, accountId })
       }
 
       // send quick acknowledgment reply
+      // for P2P chats, send to the sender's open_id; for group chats, send to chat_id
       if (resolvedCallbacks.sendQuickReply) {
+        const replyTarget = chatId ?? senderId ?? interruptKey
         void resolvedCallbacks.sendQuickReply({
-          chatId,
+          chatId: replyTarget,
           text: "好，请补充你的信息，我在等你。",
           accountId,
         })
       }
-      gateLog(`GATE: interrupt_request → awaiting supplement for chat=${chatId}`)
+      gateLog(`GATE: interrupt_request → awaiting supplement for key=${interruptKey}`)
 
       // set timer: after 10s, if no supplement arrived, dispatch the interrupt alone
       state.timer = setTimeout(() => {
-        thisDispatchInterrupt(chatId, originalHandler, resolvedCallbacks)
+        thisDispatchInterrupt(interruptKey, originalHandler, resolvedCallbacks)
       }, SUPPLEMENT_WINDOW_MS)
 
-      interruptStates.set(chatId, state)
+      interruptStates.set(interruptKey, state)
 
       // mark the interrupt message as handled so it doesn't enter pipeline later
       const messageId = extractMessageId(data)
@@ -319,7 +337,8 @@ export function wrapHandlerWithGate(
     }
 
     // ── check if this chat is in interrupt supplement collection ──
-    const interruptState = ctx.chatId ? interruptStates.get(ctx.chatId) : undefined
+    const interruptLookupKey = ctx.chatId ?? (ctx.senderId ? `p2p:${accountId}:${ctx.senderId}` : undefined)
+    const interruptState = interruptLookupKey ? interruptStates.get(interruptLookupKey) : undefined
     if (interruptState) {
       // this message is a SUPPLEMENT to an earlier interrupt_request
       // collect it, reset the timer
@@ -335,12 +354,12 @@ export function wrapHandlerWithGate(
       })
 
       gateLog(
-        `GATE: supplement collected for chat=${ctx.chatId} — "${ctx.messageText?.substring(0, 30)}" (${interruptState.supplements.length} supplements so far)`,
+        `GATE: supplement collected for key=${interruptLookupKey} — "${ctx.messageText?.substring(0, 30)}" (${interruptState.supplements.length} supplements so far)`,
       )
 
       // reset timer for supplement window
       interruptState.timer = setTimeout(() => {
-        thisDispatchInterrupt(ctx.chatId!, originalHandler, resolvedCallbacks)
+        thisDispatchInterrupt(interruptLookupKey!, originalHandler, resolvedCallbacks)
       }, SUPPLEMENT_WINDOW_MS)
 
       // mark supplement message as handled

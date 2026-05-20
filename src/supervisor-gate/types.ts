@@ -132,6 +132,16 @@ export type GateCallbacks = {
   /** Send a quick acknowledgment message to the chat (e.g. "好，是否有信息补充？").
    *  Used for interrupt_request — tells user the gate is waiting for supplement. */
   sendQuickReply?: (params: { chatId: string; text: string; accountId: string }) => Promise<void>
+  /** Abort the currently active session/run for a chat.
+   *  Called when interrupt_request is detected — stops the running agent turn
+   *  so the user's correction/supplement takes priority.
+   *  Returns true if a session was actually aborted, false if no active session found. */
+  steerSession?: (params: {
+    /** Session key to abort (e.g. "agent:main:feishu:group:oc_xxx") */
+    sessionKey: string
+    /** Account ID */
+    accountId: string
+  }) => Promise<boolean>
 }
 
 // ─── Message Buffer ───

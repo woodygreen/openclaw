@@ -20,16 +20,19 @@ function isSlashCommand(text: string): boolean {
 
 const INTERRUPT_REQUEST_PATTERNS: RegExp[] = [
   // Chinese patterns
-  /等一下/i, /等等/i, /等会/i, /稍等/i, /稍候/i,
-  /别急/i, /先别/i, /不要急/i,
-  /不对/i, /错了/i, /不是/i, /搞错了/i,
+  /等一下/i, /等等/i, /等下/i, /等会/i, /稍等/i, /稍候/i,
+  /稍等一下/i, /等一等/i, /等一下下/i,
+  /别急/i, /先别/i, /不要急/i, /先别急/i,
+  /不对/i, /错了/i, /不是/i, /搞错了/i, /错了错了/i,
   /打断/i, /插一下/i, /暂停/i, /停一下/i,
   /等我有?重要/i, /有重要的事/i, /先处理/i,
+  /重新说/i, /再说一遍/i, /我重说/i,
   // English patterns
   /\bwait\b/i, /\bhold on\b/i, /\bhold up\b/i,
   /\bstop\b/i, /\bnot right\b/i, /\bwrong\b/i,
   /\bactually\b/i, /\bno wait\b/i, /\blet me\b/i,
   /\binterrupt/i, /\bpause\b/i,
+  /\bhang on\b/i, /\bjust a sec\b/i, /\bone second\b/i,
 ]
 
 function isInterruptRequest(text: string): boolean {
