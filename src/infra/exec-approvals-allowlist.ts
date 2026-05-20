@@ -8,7 +8,6 @@ import { isInterpreterLikeAllowlistPattern } from "./command-analysis/inline-eva
 import { detectInlineEvalArgv } from "./command-analysis/risks.js";
 import {
   isDispatchWrapperExecutable,
-  unwrapDispatchWrappersForResolution,
 } from "./dispatch-wrapper-resolution.js";
 import {
   analyzeShellCommand,
@@ -503,23 +502,7 @@ function resolvePowerShellFileScriptArgv(params: {
 }
 
 function resolveSegmentSourceArgv(segment: ExecCommandSegment): string[] {
-  const sourceArgv = segment.sourceArgv;
-  if (!Array.isArray(sourceArgv) || sourceArgv.length === 0) {
-    return segment.argv;
-  }
-
-  const segmentExecutable = normalizeExecutableToken(segment.argv[0] ?? "");
-  if (!segmentExecutable) {
-    return segment.argv;
-  }
-  if (normalizeExecutableToken(sourceArgv[0] ?? "") === segmentExecutable) {
-    return sourceArgv;
-  }
-
-  const unwrappedSourceArgv = unwrapDispatchWrappersForResolution(sourceArgv);
-  return normalizeExecutableToken(unwrappedSourceArgv[0] ?? "") === segmentExecutable
-    ? unwrappedSourceArgv
-    : segment.argv;
+  return segment.argv
 }
 
 function resolveSegmentAllowlistMatch(params: {
@@ -1139,7 +1122,6 @@ function collectAllowAlwaysPatterns(params: {
       : {
           raw: trustPlan.argv.join(" "),
           argv: trustPlan.argv,
-          sourceArgv: params.segment.sourceArgv,
           resolution: resolveCommandResolutionFromArgv(trustPlan.argv, params.cwd, params.env),
         };
 

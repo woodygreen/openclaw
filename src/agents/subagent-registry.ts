@@ -25,6 +25,7 @@ import {
   SUBAGENT_ENDED_REASON_KILLED,
   type SubagentLifecycleEndedReason,
 } from "./subagent-lifecycle-events.js";
+import { resolveSubagentSessionCompletion } from "./subagent-session-reconciliation.js";
 import {
   emitSubagentEndedHookOnce,
   resolveLifecycleOutcomeFromRunOutcome,
@@ -990,6 +991,7 @@ const subagentRunManager = createSubagentRunManager({
   notifyContextEngineSubagentEnded,
   completeCleanupBookkeeping,
   completeSubagentRun,
+  resolveSubagentSessionCompletion,
 });
 
 configureSubagentRegistrySteerRuntime({

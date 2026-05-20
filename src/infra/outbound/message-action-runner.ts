@@ -8,6 +8,8 @@ import {
 import type { ReplyPayload } from "../../auto-reply/reply-payload.js";
 import { parseReplyDirectives } from "../../auto-reply/reply/reply-directives.js";
 import { normalizeChatType, type ChatType } from "../../channels/chat-type.js";
+import type { InboundEventKind } from "../../channels/inbound-event/kind.js";
+import type { SourceReplyDeliveryMode } from "../../channels/message/reply-pipeline.js";
 import { getChannelPlugin } from "../../channels/plugins/index.js";
 import { dispatchChannelMessageAction } from "../../channels/plugins/message-action-dispatch.js";
 import type {
@@ -117,6 +119,8 @@ export type RunMessageActionParams = {
   sandboxRoot?: string;
   dryRun?: boolean;
   abortSignal?: AbortSignal;
+  sourceReplyDeliveryMode?: SourceReplyDeliveryMode;
+  inboundEventKind?: InboundEventKind;
 };
 
 export type MessageActionRunResult =
