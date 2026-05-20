@@ -14,17 +14,16 @@ export function parseWithdrawalEvent(ctx: GateContext): WithdrawalEvent | null {
   const data = ctx.rawEventData
   if (!isRecord(data)) return null
 
-  // Lark SDK recall event structure
-  const event = data.event as Record<string, unknown> | undefined
-  if (!isRecord(event)) return null
-
-  const message = event.message as Record<string, unknown> | undefined
+  // NOTE: Lark SDK EventDispatcher.parse() flattens the envelope —
+  // handler data is { sender, message, event_id, ... } directly,
+  // NOT { event: { sender, message } }
+  const message = data.message as Record<string, unknown> | undefined
   if (!isRecord(message)) return null
 
   const messageId = message.message_id as string | undefined
   const chatId = message.chat_id as string | undefined
 
-  const sender = event.sender as Record<string, unknown> | undefined
+  const sender = data.sender as Record<string, unknown> | undefined
   const senderIdObj = sender?.sender_id as Record<string, unknown> | undefined
   const senderId = senderIdObj?.open_id as string | undefined
 

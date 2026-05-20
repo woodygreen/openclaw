@@ -42,23 +42,23 @@ function buildGateContext(
   }
 
   // for im.message.receive_v1, extract message text and metadata
+  // NOTE: Lark SDK EventDispatcher.parse() flattens the envelope —
+  // handler data is { sender, message, event_id, ... } directly,
+  // NOT { event: { sender, message } }
   if (eventType === "im.message.receive_v1") {
     const payload = data as Record<string, unknown> | null
     if (payload && typeof payload === "object" && !Array.isArray(payload)) {
-      const event = payload.event as Record<string, unknown> | undefined
-      if (event) {
-        const message = event.message as Record<string, unknown> | undefined
-        if (message) {
-          ctx.chatType = message.chat_type as string | undefined
-          ctx.chatId = message.chat_id as string | undefined
-          ctx.messageText = extractMessageText(message)
-          ctx.isSlashCommand = ctx.messageText ? ctx.messageText.trim().startsWith("/") : false
+      const message = payload.message as Record<string, unknown> | undefined
+      if (message) {
+        ctx.chatType = message.chat_type as string | undefined
+        ctx.chatId = message.chat_id as string | undefined
+        ctx.messageText = extractMessageText(message)
+        ctx.isSlashCommand = ctx.messageText ? ctx.messageText.trim().startsWith("/") : false
 
-          const sender = event.sender as Record<string, unknown> | undefined
-          if (sender) {
-            const senderIdObj = sender.sender_id as Record<string, unknown> | undefined
-            ctx.senderId = senderIdObj?.open_id as string | undefined
-          }
+        const sender = payload.sender as Record<string, unknown> | undefined
+        if (sender) {
+          const senderIdObj = sender.sender_id as Record<string, unknown> | undefined
+          ctx.senderId = senderIdObj?.open_id as string | undefined
         }
       }
     }
