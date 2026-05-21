@@ -117,6 +117,47 @@ export type DomainKeywordMap = {
   }
 }
 
+// ─── Message Classification ───
+
+/** Per-message LLM classification result */
+export type MessageClassification = {
+  intent: "normal" | "interrupt" | "supplement" | "continuation" | "slash_command" | "recall"
+  confidence: number
+  supplementHint?: string
+}
+
+// ─── Message Entry ───
+
+/** A cached message entry in the per-chat cache */
+export type MessageEntry = {
+  messageId: string
+  text: string | undefined
+  rawEventData: unknown
+  gateTime: number
+  classification?: MessageClassification
+  status: "pending" | "classified" | "dispatched" | "supplement"
+}
+
+// ─── Per-Chat Cache State ───
+
+/** Processing status for a chat's message cache */
+export type ChatProcessingStatus = "idle" | "buffering" | "processing" | "interrupted"
+
+/** Per-chat message cache that tracks all messages and their processing state */
+export type PerChatCache = {
+  chatKey: string
+  messages: MessageEntry[]
+  processingStatus: ChatProcessingStatus
+  dispatchTimer: ReturnType<typeof setTimeout> | null
+  supplementTimer: ReturnType<typeof setTimeout> | null
+  followUpTimer: ReturnType<typeof setTimeout> | null
+  followUpSent: boolean
+  lastDispatchedIndex: number
+  interruptText?: string
+  interruptMessageId?: string
+  hasActiveRun?: boolean
+}
+
 // ─── Gate Callbacks ───
 
 /** Callbacks provided by the integration layer (monitor.account.ts)
@@ -142,6 +183,26 @@ export type GateCallbacks = {
     /** Account ID */
     accountId: string
   }) => Promise<boolean>
+  /** Check whether a chat has an active agent run.
+   *  Called when a new message arrives during agent processing —
+   *  if true, the gate aborts the session and re-dispatches with all messages. */
+  hasActiveRun?: (params: {
+    /** Session key to check (e.g. "agent:main:feishu:group:oc_xxx") */
+    sessionKey: string
+    /** Account ID */
+    accountId: string
+  }) => Promise<boolean>
+  /** Classify a message intent using LLM.
+   *  Called asynchronously for each message that falls through the rule-based layer.
+   *  Returns classification result or null on failure/timeout. */
+  classifyWithLLM?: (params: {
+    /** Message text to classify */
+    text: string
+    /** Account ID */
+    accountId: string
+    /** Previous messages in this chat for context */
+    recentMessages?: string[]
+  }) => Promise<MessageClassification | null>
 }
 
 // ─── Message Buffer ───

@@ -10,8 +10,9 @@ export {
 } from "./classifier.js"
 
 export {
-  GateMessageBuffer,
-} from "./buffer.js"
+  MessageIdCache,
+  setCacheLogger,
+} from "./cache.js"
 
 export {
   parseWithdrawalEvent,
@@ -34,4 +35,8 @@ export type {
   DomainKeywordMap,
   GateCallbacks,
   BufferedMessage,
+  MessageClassification,
+  MessageEntry,
+  PerChatCache,
+  ChatProcessingStatus,
 } from "./types.js"

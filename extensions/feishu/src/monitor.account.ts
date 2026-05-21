@@ -30,7 +30,7 @@ import { getFeishuSequentialKey } from "./sequential-key.js";
 import { createFeishuThreadBindingManager } from "./thread-bindings.js";
 import type { FeishuChatType, ResolvedFeishuAccount } from "./types.js";
 import { wrapHandlerWithGate, setGateLogger } from "openclaw/plugin-sdk/supervisor-gate";
-import type { GateCallbacks } from "openclaw/plugin-sdk/supervisor-gate";
+import type { GateCallbacks, MessageClassification } from "openclaw/plugin-sdk/supervisor-gate";
 
 const FEISHU_REACTION_VERIFY_TIMEOUT_MS = 1_500;
 
@@ -355,6 +355,133 @@ function registerEventHandlers(
       } catch (err) {
         error(`feishu[${accountId}]: gate callback: steerSession failed: ${String(err)}`)
         return false
+      }
+    },
+    // hasActiveRun: check whether a chat session has an active agent run
+    // used for mid-turn new message handling — if active, abort and re-dispatch all messages
+    hasActiveRun: async (params: { sessionKey: string; accountId: string }) => {
+      try {
+        const { callGatewayTool } = await import("openclaw/plugin-sdk/agent-harness-runtime")
+        const sessions = await callGatewayTool<Array<{ key: string; hasActiveRun?: boolean }>>(
+          "sessions.list",
+          {},
+          {},
+        )
+        const match = sessions.find((s) => s.key === params.sessionKey)
+        const hasActive = match?.hasActiveRun ?? false
+        log(`feishu[${accountId}]: gate hasActiveRun → sessions.list check for key=${params.sessionKey} → ${hasActive}`)
+        return hasActive
+      } catch (err) {
+        error(`feishu[${accountId}]: gate callback: hasActiveRun failed: ${String(err)}`)
+        return false
+      }
+    },
+    // classifyWithLLM: per-message intent classification using lightweight LLM
+    // two-layer design: rule-based is instant, LLM handles nuance cases asynchronously
+    classifyWithLLM: async (params: {
+      text: string
+      accountId: string
+      recentMessages?: string[]
+    }): Promise<MessageClassification | null> => {
+      try {
+        // use the gateway's simple completion runtime for classification
+        // plugin-sdk exposes prepareSimpleCompletionModel via openclaw/plugin-sdk/simple-completion-runtime
+        const { prepareSimpleCompletionModel, completeWithPreparedSimpleCompletionModel } =
+          await import("openclaw/plugin-sdk/simple-completion-runtime")
+
+        // resolve the classification model (lightweight, fast)
+        // use kimi model for low-latency classification
+        const prepared = await prepareSimpleCompletionModel({
+          cfg,
+          provider: "kimi",
+          modelId: "kimi-for-coding",
+          skipPiDiscovery: true,
+        })
+
+        if ("error" in prepared) {
+          log(`feishu[${accountId}]: gate classifyWithLLM — model resolution failed: ${prepared.error}`)
+          return null
+        }
+
+        // build classification prompt
+        const classificationPrompt = `你是 OpenClaw 的意图分类器。对飞书消息判断意图类别。
+
+类别定义：
+- normal: 普通请求/提问，需要 agent 回复
+- interrupt: 打断/暂停信号（如"等下"、"不对"、"错了"、"其实..."、"等等我还没说完"）
+- supplement: 对之前消息的补充/纠正（如"我补充一点"、"还有就是XXX"、"对了还有..."）
+- continuation: 正在连续输入中，这条消息是上一条的延续，不应该独立触发回复
+- slash_command: 以 / 开头的命令
+- recall: 消息撤回事件
+
+输出格式（JSON）：
+{ "intent": "normal|interrupt|supplement|continuation", "confidence": 0.0-1.0, "supplementHint": "可选描述" }
+
+注意：
+1. "哎呀不对" 是 interrupt，不是 normal
+2. "我补充一点关于XXX的" 是 supplement
+3. "还有就是YYY" 是 continuation
+4. confidence < 0.6 时倾向 normal（保守策略）`
+
+        const recentContext = params.recentMessages && params.recentMessages.length > 0
+          ? `\nRecent messages in this chat: ${params.recentMessages.map((m, i) => `[${i + 1}] ${m}`).join(" | ")}`
+          : ""
+
+        const userContent = `${classificationPrompt}\n${recentContext}\n\n分类这条消息：${params.text}`
+
+        const controller = new AbortController()
+        const timer = setTimeout(() => controller.abort(), 3000)
+
+        let result: unknown
+        try {
+          result = await completeWithPreparedSimpleCompletionModel({
+            model: prepared.model,
+            auth: prepared.auth,
+            context: {
+              systemPrompt: "You are an intent classifier. Output JSON only.",
+              messages: [{ role: "user", content: userContent, timestamp: Date.now() }],
+            },
+            cfg,
+            options: {
+              maxTokens: 200,
+              temperature: 0.1,
+              signal: controller.signal,
+            },
+          })
+        } finally {
+          clearTimeout(timer)
+        }
+
+        // parse the JSON response — completeSimple returns an AssistantMessage-like object
+        // content is typically [{ type: "text", text: "..." }]
+        const resultObj = result as Record<string, unknown> | null
+        const contentBlocks = resultObj?.content as Array<Record<string, unknown>> | undefined
+        const textContent = contentBlocks
+          ?.filter((b) => b.type === "text")
+          .map((b) => b.text as string)
+          .join("")
+        ?? (typeof result === "string" ? result : "")
+        const jsonMatch = textContent.match(/\{[\s\S]*\}/)
+        if (!jsonMatch) {
+          log(`feishu[${accountId}]: gate classifyWithLLM — no JSON found in response, skipping`)
+          return null
+        }
+
+        const parsed = JSON.parse(jsonMatch[0]) as MessageClassification
+        // validate intent field
+        const validIntents = ["normal", "interrupt", "supplement", "continuation", "slash_command", "recall"]
+        if (!validIntents.includes(parsed.intent)) {
+          parsed.intent = "normal"
+        }
+        // clamp confidence
+        parsed.confidence = Math.max(0, Math.min(1, parsed.confidence ?? 0.5))
+
+        log(`feishu[${accountId}]: gate classifyWithLLM → intent=${parsed.intent} confidence=${parsed.confidence} for text="${params.text.substring(0, 30)}"`)
+        return parsed
+      } catch (err) {
+        // LLM classification failure is non-critical — degrade to rule-based result
+        log(`feishu[${accountId}]: gate classifyWithLLM failed (degrading to rule-based): ${String(err)}`)
+        return null
       }
     },
   };
