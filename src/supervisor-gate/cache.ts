@@ -40,15 +40,20 @@ export function setCacheLogger(logFn: (...args: unknown[]) => void): void {
 // ─── Shared session key builder ───
 
 export function buildSessionKey(ctx: GateContext, chatKey: string): string {
+  // map feishu chat_type to OpenClaw session key convention:
+  // feishu "p2p" → OpenClaw "direct" with senderId suffix
+  // feishu "group"/"topic_group" → OpenClaw "group" with chatId suffix
   const chatType = ctx.chatType ?? (ctx.chatId ? "group" : "p2p")
   let sessionSuffix: string
-  if (chatKey.startsWith("p2p:")) {
-    const parts = chatKey.split(":")
-    sessionSuffix = parts[2] ?? ctx.senderId ?? chatKey
+  let sessionKind: string
+  if (chatType === "p2p") {
+    sessionKind = "direct"
+    sessionSuffix = ctx.senderId ?? chatKey
   } else {
+    sessionKind = "group"
     sessionSuffix = chatKey
   }
-  return `agent:main:feishu:${chatType}:${sessionSuffix}`
+  return `agent:main:feishu:${sessionKind}:${sessionSuffix}`
 }
 
 // ─── Cache Manager ───

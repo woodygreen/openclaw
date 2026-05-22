@@ -362,12 +362,12 @@ function registerEventHandlers(
     hasActiveRun: async (params: { sessionKey: string; accountId: string }) => {
       try {
         const { callGatewayTool } = await import("openclaw/plugin-sdk/agent-harness-runtime")
-        const sessions = await callGatewayTool<Array<{ key: string; hasActiveRun?: boolean }>>(
+        const result = await callGatewayTool<{ sessions: Array<{ key: string; hasActiveRun?: boolean }> }>(
           "sessions.list",
           {},
           {},
         )
-        const match = sessions.find((s) => s.key === params.sessionKey)
+        const match = result.sessions.find((s) => s.key === params.sessionKey)
         const hasActive = match?.hasActiveRun ?? false
         log(`feishu[${accountId}]: gate hasActiveRun → sessions.list check for key=${params.sessionKey} → ${hasActive}`)
         return hasActive
@@ -404,24 +404,24 @@ function registerEventHandlers(
         }
 
         // build classification prompt
-        const classificationPrompt = `你是 OpenClaw 的意图分类器。对飞书消息判断意图类别。
+        const classificationPrompt = `你是意图分类器。对飞书消息判断意图类别。
 
 类别定义：
-- normal: 普通请求/提问，需要 agent 回复
-- interrupt: 打断/暂停信号（如"等下"、"不对"、"错了"、"其实..."、"等等我还没说完"）
-- supplement: 对之前消息的补充/纠正（如"我补充一点"、"还有就是XXX"、"对了还有..."）
-- continuation: 正在连续输入中，这条消息是上一条的延续，不应该独立触发回复
+- normal: 普通请求/提问
+- interrupt: 打断信号（如"等下"、"不对"、"错了"、"其实..."、"等等我还没说完"）
+- supplement: 补充/纠正（如"我补充一点"、"还有就是XXX"、"对了还有..."）
+- continuation: 连续输入的延续，不应独立触发回复
 - slash_command: 以 / 开头的命令
-- recall: 消息撤回事件
+- recall: 消息撤回
 
-输出格式（JSON）：
-{ "intent": "normal|interrupt|supplement|continuation", "confidence": 0.0-1.0, "supplementHint": "可选描述" }
+只输出一行JSON，不要解释，不要多余文字。格式：
+{"intent":"normal|interrupt|supplement|continuation","confidence":0.0-1.0,"supplementHint":"可选"}
 
 注意：
-1. "哎呀不对" 是 interrupt，不是 normal
-2. "我补充一点关于XXX的" 是 supplement
+1. "哎呀不对" 是 interrupt
+2. "我补充一点" 是 supplement
 3. "还有就是YYY" 是 continuation
-4. confidence < 0.6 时倾向 normal（保守策略）`
+4. confidence<0.6 时倾向 normal`
 
         const recentContext = params.recentMessages && params.recentMessages.length > 0
           ? `\nRecent messages in this chat: ${params.recentMessages.map((m, i) => `[${i + 1}] ${m}`).join(" | ")}`
@@ -461,13 +461,26 @@ function registerEventHandlers(
           .map((b) => b.text as string)
           .join("")
         ?? (typeof result === "string" ? result : "")
-        const jsonMatch = textContent.match(/\{[\s\S]*\}/)
-        if (!jsonMatch) {
-          log(`feishu[${accountId}]: gate classifyWithLLM — no JSON found in response, skipping`)
+        // try to extract JSON from response — kimi may wrap in markdown code blocks
+        let jsonStr: string | null = null
+        // first try: extract from ```json ... ``` code block
+        const codeBlockMatch = textContent.match(/```(?:json)?\s*\n?([\s\S]*?)\n?```/)
+        if (codeBlockMatch) {
+          jsonStr = codeBlockMatch[1].trim()
+        }
+        // second try: raw JSON object in text
+        if (!jsonStr) {
+          const rawMatch = textContent.match(/\{[\s\S]*\}/)
+          if (rawMatch) {
+            jsonStr = rawMatch[0]
+          }
+        }
+        if (!jsonStr) {
+          log(`feishu[${accountId}]: gate classifyWithLLM — no JSON found in response, skipping (raw: ${textContent.substring(0, 100)})`)
           return null
         }
 
-        const parsed = JSON.parse(jsonMatch[0]) as MessageClassification
+        const parsed = JSON.parse(jsonStr) as MessageClassification
         // validate intent field
         const validIntents = ["normal", "interrupt", "supplement", "continuation", "slash_command", "recall"]
         if (!validIntents.includes(parsed.intent)) {
