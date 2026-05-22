@@ -156,6 +156,8 @@ export type PerChatCache = {
   interruptText?: string
   interruptMessageId?: string
   hasActiveRun?: boolean
+  accountId: string
+  replyTarget: string
 }
 
 // ─── Gate Callbacks ───

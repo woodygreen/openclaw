@@ -3,7 +3,7 @@
 // Uses MessageIdCache for unified message tracking, interrupt handling, and
 // mid-turn new message re-dispatch.
 import { classifyEvent } from "./classifier.js"
-import { MessageIdCache } from "./cache.js"
+import { MessageIdCache, buildSessionKey, gateLog, setCacheLogger } from "./cache.js"
 import type {
   BufferedMessage,
   GateCallbacks,
@@ -15,13 +15,11 @@ import type {
 import { parseWithdrawalEvent } from "./withdrawal.js"
 
 // ─── Gate Logger ───
-
-let gateLog: (...args: unknown[]) => void = (...args) => {
-  console.log("[supervisor-gate]", ...args)
-}
+// Logger is owned by cache.ts; setGateLogger delegates to setCacheLogger
+// so both modules share the same log function.
 
 export function setGateLogger(logFn: (...args: unknown[]) => void): void {
-  gateLog = logFn
+  setCacheLogger(logFn)
 }
 
 // ─── Gate Configuration ───
@@ -242,38 +240,15 @@ export function wrapHandlerWithGate(
       // flush any pending buffer for this chat
       cache.flushImmediate(chatKey)
 
-      // mark as interrupted in cache
+      // mark as interrupted in cache — also stores interrupt message's rawEventData
       const interruptMessageId = extractMessageId(data)
-      cache.handleInterrupt(chatKey, ctx.messageText ?? "", interruptMessageId)
+      cache.handleInterrupt(chatKey, ctx.messageText ?? "", interruptMessageId, data)
 
-      // abort running session
-      const chatType = ctx.chatType ?? (ctx.chatId ? "group" : "p2p")
-      let sessionSuffix: string
-      if (chatKey.startsWith("p2p:")) {
-        const parts = chatKey.split(":")
-        sessionSuffix = parts[2] ?? ctx.senderId ?? chatKey
-      } else {
-        sessionSuffix = chatKey
-      }
-      const sessionKey = `agent:main:feishu:${chatType}:${sessionSuffix}`
+      // abort running session and send quick reply — cache handles these via callbacks
+      const sessionKey = buildSessionKey(ctx, chatKey)
       if (resolvedCallbacks.steerSession) {
         gateLog(`GATE: interrupt_request → steering session ${sessionKey}`)
         void resolvedCallbacks.steerSession({ sessionKey, accountId })
-      }
-
-      // send quick acknowledgment reply
-      if (resolvedCallbacks.sendQuickReply) {
-        const replyTarget = ctx.chatId ?? ctx.senderId ?? chatKey
-        void resolvedCallbacks.sendQuickReply({
-          chatId: replyTarget,
-          text: "好，请补充你的信息，我在等你。",
-          accountId,
-        })
-      }
-
-      // mark interrupt message as handled in dedup
-      if (interruptMessageId && resolvedCallbacks.markMessageHandled) {
-        void resolvedCallbacks.markMessageHandled(interruptMessageId)
       }
 
       gateLog(`GATE: interrupt_request → awaiting supplement for key=${chatKey}`)
@@ -302,15 +277,7 @@ export function wrapHandlerWithGate(
 
     // ── mid-turn new message: check if agent has active run ──
     if (chatKey && resolvedCallbacks.hasActiveRun) {
-      const chatType = ctx.chatType ?? (ctx.chatId ? "group" : "p2p")
-      let sessionSuffix: string
-      if (chatKey.startsWith("p2p:")) {
-        const parts = chatKey.split(":")
-        sessionSuffix = parts[2] ?? ctx.senderId ?? chatKey
-      } else {
-        sessionSuffix = chatKey
-      }
-      const sessionKey = `agent:main:feishu:${chatType}:${sessionSuffix}`
+      const sessionKey = buildSessionKey(ctx, chatKey)
 
       const hasActive = await resolvedCallbacks.hasActiveRun({ sessionKey, accountId })
       if (hasActive) {
@@ -329,9 +296,8 @@ export function wrapHandlerWithGate(
 
         // send quick reply to tell user we're re-processing
         if (resolvedCallbacks.sendQuickReply) {
-          const replyTarget = ctx.chatId ?? ctx.senderId ?? chatKey
           void resolvedCallbacks.sendQuickReply({
-            chatId: replyTarget,
+            chatId: ctx.chatId ?? ctx.senderId ?? chatKey,
             text: "收到你的新消息，我重新整理一下回复。",
             accountId,
           })

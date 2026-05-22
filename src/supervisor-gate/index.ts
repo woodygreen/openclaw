@@ -12,6 +12,8 @@ export {
 export {
   MessageIdCache,
   setCacheLogger,
+  buildSessionKey,
+  gateLog,
 } from "./cache.js"
 
 export {

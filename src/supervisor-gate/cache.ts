@@ -10,7 +10,6 @@ import type {
   MessageClassification,
   MessageEntry,
   PerChatCache,
-  ChatProcessingStatus,
 } from "./types.js"
 
 // ─── Configuration ───
@@ -19,6 +18,38 @@ const DEFAULT_DEBOUNCE_MS = 3000       // 3s — wait for rapid-fire messages
 const SUPPLEMENT_WINDOW_MS = 10_000    // 10s — collect supplement info after interrupt
 const FOLLOW_UP_DELAY_MS = 120_000     // 2min — ask user if they have more to add
 const FOLLOW_UP_EXTRA_WAIT_MS = 30_000 // 30s — wait after follow-up before dispatching alone
+const MAX_DISPATCHED_MESSAGES = 50     // cap on dispatched messages kept in cache for redispatch
+const LLM_CLASSIFY_COOLDOWN_MS = 2000  // 2s cooldown between LLM classification calls per chat
+
+// ─── Gate Logger ───
+// Shared logger — gate.ts calls setCacheLogger to synchronize
+
+let _gateLog: (...args: unknown[]) => void = (...args) => {
+  console.log("[supervisor-gate]", ...args)
+}
+
+/** Shared gate logger — always delegates to the current log function */
+export function gateLog(...args: unknown[]): void {
+  _gateLog(...args)
+}
+
+export function setCacheLogger(logFn: (...args: unknown[]) => void): void {
+  _gateLog = logFn
+}
+
+// ─── Shared session key builder ───
+
+export function buildSessionKey(ctx: GateContext, chatKey: string): string {
+  const chatType = ctx.chatType ?? (ctx.chatId ? "group" : "p2p")
+  let sessionSuffix: string
+  if (chatKey.startsWith("p2p:")) {
+    const parts = chatKey.split(":")
+    sessionSuffix = parts[2] ?? ctx.senderId ?? chatKey
+  } else {
+    sessionSuffix = chatKey
+  }
+  return `agent:main:feishu:${chatType}:${sessionSuffix}`
+}
 
 // ─── Cache Manager ───
 
@@ -32,6 +63,9 @@ export class MessageIdCache {
   private boundDispatchPending: (chatKey: string) => void
   private boundDispatchInterrupt: (chatKey: string) => void
   private boundSendFollowUp: (chatKey: string) => void
+
+  // LLM classification cooldown tracking
+  private llmCooldowns = new Map<string, number>()
 
   constructor(
     originalHandler: (data: unknown) => Promise<void>,
@@ -48,48 +82,41 @@ export class MessageIdCache {
 
   // ─── Core: add a message to cache ───
 
-  /** Add a message to the per-chat cache. Starts or resets the debounce timer. */
-  addMessage(msg: BufferedMessage): PerChatCache {
+  addMessage(msg: BufferedMessage): PerChatCache | undefined {
     const chatKey = this.resolveChatKey(msg.ctx)
     if (!chatKey) {
-      // no chatId or senderId — can't cache, pass through immediately
       this.originalHandler(msg.rawData)
-      // return a dummy — caller won't use it
-      return this.createDummyCache()
+      return undefined
     }
 
     let cache = this.caches.get(chatKey)
     if (!cache) {
-      cache = this.createCache(chatKey)
+      cache = this.createCache(chatKey, msg.ctx)
       this.caches.set(chatKey, cache)
     }
 
     const entry: MessageEntry = {
       messageId: msg.messageId ?? "",
       text: msg.text,
-      rawEventData: msg.rawData,
+      rawEventData: msg.rawEventData,
       gateTime: Date.now(),
       status: "pending",
     }
 
     cache.messages.push(entry)
 
-    // if we're in supplement collection mode, mark as supplement
     if (cache.processingStatus === "interrupted") {
       entry.status = "supplement"
-      // reset supplement timer
       this.clearTimer(cache, "supplementTimer")
       cache.supplementTimer = setTimeout(
         () => this.boundDispatchInterrupt(chatKey),
         SUPPLEMENT_WINDOW_MS,
       )
-      // mark supplement message as handled in dedup
       if (msg.messageId && this.callbacks.markMessageHandled) {
         void this.callbacks.markMessageHandled(msg.messageId)
       }
     } else if (cache.processingStatus === "buffering" || cache.processingStatus === "idle") {
       cache.processingStatus = "buffering"
-      // reset debounce timer
       this.clearTimer(cache, "dispatchTimer")
       cache.dispatchTimer = setTimeout(
         () => this.boundDispatchPending(chatKey),
@@ -97,7 +124,6 @@ export class MessageIdCache {
       )
     }
 
-    // trigger async LLM classification (if available and needed)
     this.triggerLLMClassification(entry, chatKey, msg.ctx)
 
     return cache
@@ -105,23 +131,29 @@ export class MessageIdCache {
 
   // ─── Interrupt handling ───
 
-  /** Mark a chat as interrupted. Clears debounce timer, starts supplement collection. */
-  handleInterrupt(chatKey: string, interruptText: string, interruptMessageId?: string): void {
-    const cache = this.caches.get(chatKey)
+  handleInterrupt(chatKey: string, interruptText: string, interruptMessageId?: string, interruptRawData?: unknown): void {
+    let cache = this.caches.get(chatKey)
     if (!cache) {
-      // no existing cache — create one for the interrupt
-      const newCache = this.createCache(chatKey)
-      newCache.processingStatus = "interrupted"
-      newCache.interruptText = interruptText
-      newCache.interruptMessageId = interruptMessageId
-      this.caches.set(chatKey, newCache)
+      cache = this.createCache(chatKey)
+      cache.processingStatus = "interrupted"
+      cache.interruptText = interruptText
+      cache.interruptMessageId = interruptMessageId
+      // P0 fix: store interrupt message as a dispatched entry so dispatchInterrupt has rawEventData
+      if (interruptRawData) {
+        cache.messages.push({
+          messageId: interruptMessageId ?? "",
+          text: interruptText,
+          rawEventData: interruptRawData,
+          gateTime: Date.now(),
+          status: "dispatched",
+        })
+      }
+      this.caches.set(chatKey, cache)
       return
     }
 
-    // flush any pending dispatch timer
     this.clearTimer(cache, "dispatchTimer")
 
-    // mark all pending messages as dispatched (they were already sent or will be merged)
     for (const entry of cache.messages) {
       if (entry.status === "pending" || entry.status === "classified") {
         entry.status = "dispatched"
@@ -129,19 +161,28 @@ export class MessageIdCache {
     }
     cache.lastDispatchedIndex = cache.messages.length
 
-    // set interrupt state
     cache.processingStatus = "interrupted"
     cache.interruptText = interruptText
     cache.interruptMessageId = interruptMessageId
 
-    // start supplement collection timer
+    // P0 fix: store interrupt message itself in cache
+    if (interruptRawData) {
+      cache.messages.push({
+        messageId: interruptMessageId ?? "",
+        text: interruptText,
+        rawEventData: interruptRawData,
+        gateTime: Date.now(),
+        status: "dispatched",
+      })
+      cache.lastDispatchedIndex = cache.messages.length
+    }
+
     this.clearTimer(cache, "supplementTimer")
     cache.supplementTimer = setTimeout(
       () => this.boundDispatchInterrupt(chatKey),
       SUPPLEMENT_WINDOW_MS,
     )
 
-    // start follow-up timer (2min)
     this.clearTimer(cache, "followUpTimer")
     cache.followUpTimer = setTimeout(
       () => this.boundSendFollowUp(chatKey),
@@ -151,7 +192,6 @@ export class MessageIdCache {
 
   // ─── Flush operations ───
 
-  /** Flush any pending buffer for a chat immediately (e.g. when a slash command arrives). */
   flushImmediate(chatKey: string): void {
     const cache = this.caches.get(chatKey)
     if (!cache) return
@@ -160,7 +200,6 @@ export class MessageIdCache {
     }
   }
 
-  /** Flush all pending buffers (for shutdown/reset). */
   flushAll(): void {
     for (const chatKey of this.caches.keys()) {
       this.flushImmediate(chatKey)
@@ -169,16 +208,12 @@ export class MessageIdCache {
 
   // ─── Dispatch pending messages ───
 
-  /** When debounce timer expires, combine all pending/classified but un-dispatched
-   *  messages and send through originalHandler as one combined prompt. */
   private dispatchPending(chatKey: string): void {
     const cache = this.caches.get(chatKey)
     if (!cache) return
 
-    // clear timers
     this.clearTimer(cache, "dispatchTimer")
 
-    // gather all un-dispatched messages
     const pendingMessages = cache.messages.filter(
       (e) => e.status !== "dispatched" && e.status !== "supplement",
     )
@@ -188,41 +223,36 @@ export class MessageIdCache {
       return
     }
 
-    // mark as dispatched
     for (const entry of pendingMessages) {
       entry.status = "dispatched"
     }
     cache.lastDispatchedIndex = cache.messages.length
     cache.processingStatus = "processing"
 
-    // dispatch
+    this.trimDispatchedMessages(cache)
+
     this.dispatchMessages(pendingMessages, cache)
   }
 
   // ─── Dispatch interrupt + supplements ───
 
-  /** When supplement window closes, merge interrupt text + supplements
-   *  and dispatch through originalHandler as a single combined message. */
   private dispatchInterrupt(chatKey: string): void {
     const cache = this.caches.get(chatKey)
     if (!cache) return
 
-    // clear timers
     this.clearTimer(cache, "supplementTimer")
     this.clearTimer(cache, "followUpTimer")
 
-    // gather supplement messages
     const supplements = cache.messages.filter((e) => e.status === "supplement")
     const preInterruptMessages = cache.messages.filter((e) => e.status === "dispatched")
 
-    // build combined text
     const combinedText = this.buildInterruptCombinedText(
       preInterruptMessages,
       cache.interruptText ?? "",
       supplements,
     )
 
-    // use the last supplement's event data if available, otherwise last pre-interrupt
+    // use last supplement's data, then last pre-interrupt, then interrupt message itself
     const lastData = supplements.length > 0
       ? supplements[supplements.length - 1].rawEventData
       : preInterruptMessages.length > 0
@@ -230,20 +260,17 @@ export class MessageIdCache {
         : null
 
     if (!lastData) {
-      // no event data at all — can't dispatch, the quick reply already told user we're waiting
       gateLog(`GATE: interrupt resolved but no event data to dispatch for chat=${chatKey}`)
       cache.processingStatus = "idle"
       return
     }
 
-    // mark all messages as dispatched
     for (const entry of cache.messages) {
       entry.status = "dispatched"
     }
     cache.lastDispatchedIndex = cache.messages.length
     cache.processingStatus = "processing"
 
-    // mark all non-last messages as handled in dedup
     const allMessages = [...preInterruptMessages, ...supplements]
     for (const m of allMessages.slice(0, -1)) {
       if (m.messageId && this.callbacks.markMessageHandled) {
@@ -251,39 +278,32 @@ export class MessageIdCache {
       }
     }
 
-    // dispatch combined message
     const modifiedData = this.cloneWithCombinedText(lastData, combinedText)
     gateLog(
       `GATE: interrupt resolved — ${supplements.length} supplements + ${preInterruptMessages.length} pre-interrupt messages merged for chat=${chatKey}`,
     )
+
+    this.trimDispatchedMessages(cache)
     this.originalHandler(modifiedData)
   }
 
   // ─── 2-minute follow-up ───
 
-  /** Send a follow-up message asking user if they have more to add. */
   private sendFollowUp(chatKey: string): void {
     const cache = this.caches.get(chatKey)
     if (!cache) return
 
-    // clear follow-up timer
     this.clearTimer(cache, "followUpTimer")
     cache.followUpSent = true
 
-    // send follow-up message
     if (this.callbacks.sendQuickReply) {
-      // extract account ID from chatKey format
-      // chatKey is either a real chatId (oc_xxx) or "p2p:{accountId}:{senderId}"
-      const accountId = this.extractAccountIdFromChatKey(chatKey, cache)
-      const replyTarget = this.extractReplyTarget(chatKey, cache)
       void this.callbacks.sendQuickReply({
-        chatId: replyTarget,
+        chatId: cache.replyTarget,
         text: "你还有要补充的吗？如果没有了，我会基于之前的内容回复。",
-        accountId,
+        accountId: cache.accountId,
       })
     }
 
-    // set extra wait timer — 30s after follow-up, then dispatch alone
     this.clearTimer(cache, "supplementTimer")
     cache.supplementTimer = setTimeout(
       () => this.boundDispatchInterrupt(chatKey),
@@ -293,22 +313,24 @@ export class MessageIdCache {
 
   // ─── LLM classification ───
 
-  /** Trigger async LLM classification for a message entry. */
   private triggerLLMClassification(
     entry: MessageEntry,
     chatKey: string,
     ctx: GateContext,
   ): void {
     if (!this.callbacks.classifyWithLLM || !entry.text) return
-    // skip LLM classification for messages already in supplement/interrupt mode
     if (entry.status === "supplement") return
 
-    // gather recent messages for context
+    // P1 fix: rate limit — skip if cooldown hasn't expired
+    const lastCallTime = this.llmCooldowns.get(chatKey) ?? 0
+    if (Date.now() - lastCallTime < LLM_CLASSIFY_COOLDOWN_MS) return
+    this.llmCooldowns.set(chatKey, Date.now())
+
     const cache = this.caches.get(chatKey)
     const recentTexts = cache
       ? cache.messages
           .filter((e) => e.text && e.status !== "supplement")
-          .slice(-5) // last 5 messages for context
+          .slice(-5)
           .map((e) => e.text ?? "")
       : []
 
@@ -317,43 +339,36 @@ export class MessageIdCache {
       accountId: ctx.accountId,
       recentMessages: recentTexts,
     }).then((result) => {
-      if (!result) return // LLM failed/timeout — keep pending, rule layer result prevails
+      if (!result) return
 
       entry.classification = result
       if (entry.status === "pending") {
         entry.status = "classified"
       }
 
-      // LLM detected interrupt — trigger interrupt flow
       if (result.intent === "interrupt" && result.confidence >= 0.6) {
         const cache = this.caches.get(chatKey)
         if (cache && cache.processingStatus !== "interrupted") {
           gateLog(
             `GATE: LLM classified as interrupt — text="${entry.text?.substring(0, 30)}" confidence=${result.confidence}`,
           )
-          this.handleInterrupt(chatKey, entry.text ?? "", entry.messageId)
-          // abort running session if any
+          this.handleInterrupt(chatKey, entry.text ?? "", entry.messageId, entry.rawEventData)
           this.steerSessionForChat(chatKey, ctx)
-          // send quick reply
           this.sendQuickReplyForChat(chatKey, ctx)
         }
       }
 
-      // LLM detected supplement/continuation — merge into existing interrupt or extend debounce
       if (result.intent === "supplement" || result.intent === "continuation") {
         const cache = this.caches.get(chatKey)
         if (cache) {
           if (cache.processingStatus === "interrupted") {
-            // treat as supplement to existing interrupt
             entry.status = "supplement"
-            // reset supplement timer
             this.clearTimer(cache, "supplementTimer")
             cache.supplementTimer = setTimeout(
               () => this.boundDispatchInterrupt(chatKey),
               SUPPLEMENT_WINDOW_MS,
             )
           } else if (cache.processingStatus === "buffering") {
-            // continuation — reset debounce timer, wait for more
             gateLog(
               `GATE: LLM classified as continuation — extending debounce for text="${entry.text?.substring(0, 30)}"`,
             )
@@ -377,7 +392,6 @@ export class MessageIdCache {
   ): string {
     const parts: string[] = []
 
-    // pre-interrupt messages
     if (preInterruptMessages.length > 0) {
       const texts = preInterruptMessages
         .map((e) => e.text ?? "(non-text message)")
@@ -391,10 +405,8 @@ export class MessageIdCache {
       }
     }
 
-    // interrupt context
     parts.push(`然后用户说"${interruptText}"想打断并补充信息。`)
 
-    // supplement messages
     if (supplements.length > 0) {
       const supplementTexts = supplements
         .map((e) => e.text ?? "(non-text supplement)")
@@ -418,7 +430,6 @@ export class MessageIdCache {
       .filter((t) => t.length > 0)
 
     if (texts.length === 0) return ""
-
     if (texts.length === 1) return texts[0]
 
     return `用户连续发送了 ${texts.length} 条消息：\n${texts.map((t, i) => `${i + 1}. ${t}`).join("\n")}\n\n请综合理解以上内容并给出一条回复。`
@@ -428,17 +439,14 @@ export class MessageIdCache {
 
   private dispatchMessages(messages: MessageEntry[], cache: PerChatCache): void {
     if (messages.length === 1) {
-      // single message — just pass through
       this.originalHandler(messages[0].rawEventData)
       return
     }
 
-    // multiple messages — combine into one prompt
     const combinedText = this.buildPendingCombinedText(messages)
     const lastMsg = messages[messages.length - 1]
     const modifiedData = this.cloneWithCombinedText(lastMsg.rawEventData, combinedText)
 
-    // mark all non-last messages as handled in dedup
     for (const m of messages.slice(0, -1)) {
       if (m.messageId && this.callbacks.markMessageHandled) {
         void this.callbacks.markMessageHandled(m.messageId)
@@ -452,21 +460,15 @@ export class MessageIdCache {
     this.originalHandler(modifiedData)
   }
 
-  // ─── Re-dispatch all messages (for mid-turn new message handling) ───
+  // ─── Re-dispatch all messages ───
 
-  /** Re-dispatch all messages in cache (including previously dispatched ones)
-   *  after aborting a running session. Used when new messages arrive during
-   *  active agent processing. */
   redispatchAll(chatKey: string, ctx: GateContext): void {
     const cache = this.caches.get(chatKey)
     if (!cache || cache.messages.length === 0) return
 
-    // abort running session
     this.steerSessionForChat(chatKey, ctx)
 
-    // gather all messages (including previously dispatched ones)
     const allMessages = cache.messages
-
     const texts = allMessages
       .map((e) => e.text ?? "(non-text message)")
       .filter((t) => t.length > 0)
@@ -476,7 +478,6 @@ export class MessageIdCache {
       return
     }
 
-    // build full combined text
     const combinedText = texts.length === 1
       ? texts[0]
       : `用户连续发送了 ${texts.length} 条消息：\n${texts.map((t, i) => `${i + 1}. ${t}`).join("\n")}\n\n请综合理解以上所有内容并给出一条统一回复。`
@@ -484,35 +485,33 @@ export class MessageIdCache {
     const lastMsg = allMessages[allMessages.length - 1]
     const modifiedData = this.cloneWithCombinedText(lastMsg.rawEventData, combinedText)
 
-    // mark all non-last messages as handled
     for (const m of allMessages.slice(0, -1)) {
       if (m.messageId && this.callbacks.markMessageHandled) {
         void this.callbacks.markMessageHandled(m.messageId)
       }
     }
 
-    // update cache state
     for (const entry of cache.messages) {
       entry.status = "dispatched"
     }
     cache.lastDispatchedIndex = cache.messages.length
     cache.processingStatus = "processing"
 
-    // clear all timers
     this.clearTimer(cache, "dispatchTimer")
     this.clearTimer(cache, "supplementTimer")
     this.clearTimer(cache, "followUpTimer")
 
     gateLog(
-      `GATE: REDISPATCH — re-combined ${allMessages.length} messages (including previously dispatched) for chat=${chatKey}`,
+      `GATE: REDISPATCH — re-combined ${allMessages.length} messages for chat=${chatKey}`,
     )
 
+    this.trimDispatchedMessages(cache)
     this.originalHandler(modifiedData)
   }
 
   // ─── Helpers ───
 
-  private createCache(chatKey: string): PerChatCache {
+  private createCache(chatKey: string, ctx?: GateContext): PerChatCache {
     return {
       chatKey,
       messages: [],
@@ -522,19 +521,8 @@ export class MessageIdCache {
       followUpTimer: null,
       followUpSent: false,
       lastDispatchedIndex: 0,
-    }
-  }
-
-  private createDummyCache(): PerChatCache {
-    return {
-      chatKey: "__passthrough__",
-      messages: [],
-      processingStatus: "idle",
-      dispatchTimer: null,
-      supplementTimer: null,
-      followUpTimer: null,
-      followUpSent: false,
-      lastDispatchedIndex: 0,
+      accountId: ctx?.accountId ?? "",
+      replyTarget: ctx ? (ctx.chatId ?? ctx.senderId ?? chatKey) : chatKey,
     }
   }
 
@@ -562,70 +550,52 @@ export class MessageIdCache {
 
   private steerSessionForChat(chatKey: string, ctx: GateContext): void {
     if (!this.callbacks.steerSession) return
-    // build session key from chatKey
-    const chatType = ctx.chatType ?? (ctx.chatId ? "group" : "p2p")
-    // extract session suffix from chatKey
-    let sessionSuffix: string
-    if (chatKey.startsWith("p2p:")) {
-      // p2p:{accountId}:{senderId} → use senderId as suffix
-      const parts = chatKey.split(":")
-      sessionSuffix = parts[2] ?? ctx.senderId ?? chatKey
-    } else {
-      sessionSuffix = chatKey
-    }
-    const sessionKey = `agent:main:feishu:${chatType}:${sessionSuffix}`
+    const sessionKey = buildSessionKey(ctx, chatKey)
     gateLog(`GATE: steering session ${sessionKey}`)
     void this.callbacks.steerSession({ sessionKey, accountId: ctx.accountId })
   }
 
   private sendQuickReplyForChat(chatKey: string, ctx: GateContext): void {
     if (!this.callbacks.sendQuickReply) return
-    const accountId = ctx.accountId
-    // for P2P, reply target is senderId (open_id); for group, it's chatId (chat_id)
     const replyTarget = ctx.chatId ?? ctx.senderId ?? chatKey
     void this.callbacks.sendQuickReply({
       chatId: replyTarget,
       text: "好，请补充你的信息，我在等你。",
-      accountId,
+      accountId: ctx.accountId,
     })
   }
 
-  private extractAccountIdFromChatKey(chatKey: string, cache: PerChatCache): string {
-    if (chatKey.startsWith("p2p:")) {
-      const parts = chatKey.split(":")
-      return parts[1] ?? ""
-    }
-    // for group chats, try to find accountId from messages
-    // fallback: look for any message with accountId in rawEventData
-    return ""
+  /** Trim dispatched messages to prevent unbounded memory growth.
+   *  Only keeps the last MAX_DISPATCHED_MESSAGES dispatched entries
+   *  (needed for redispatchAll). */
+  private trimDispatchedMessages(cache: PerChatCache): void {
+    const dispatched = cache.messages.filter((e) => e.status === "dispatched")
+    if (dispatched.length <= MAX_DISPATCHED_MESSAGES) return
+    // remove oldest dispatched entries, keeping the last MAX_DISPATCHED_MESSAGES
+    const toRemove = dispatched.length - MAX_DISPATCHED_MESSAGES
+    let removed = 0
+    cache.messages = cache.messages.filter((e) => {
+      if (e.status === "dispatched" && removed < toRemove) {
+        removed++
+        return false
+      }
+      return true
+    })
   }
 
-  private extractReplyTarget(chatKey: string, cache: PerChatCache): string {
-    if (chatKey.startsWith("p2p:")) {
-      // p2p:{accountId}:{senderId} → senderId is the reply target (open_id)
-      const parts = chatKey.split(":")
-      return parts[2] ?? chatKey
-    }
-    // group chat → chatKey is the chat_id
-    return chatKey
-  }
-
-  /** Get cache for a chat key (for external inspection). */
   getCache(chatKey: string): PerChatCache | undefined {
     return this.caches.get(chatKey)
   }
 
-  /** Get or create cache for a chat key. */
-  getOrCreateCache(chatKey: string): PerChatCache {
+  getOrCreateCache(chatKey: string, ctx: GateContext): PerChatCache {
     let cache = this.caches.get(chatKey)
     if (!cache) {
-      cache = this.createCache(chatKey)
+      cache = this.createCache(chatKey, ctx)
       this.caches.set(chatKey, cache)
     }
     return cache
   }
 
-  /** Get buffer stats for debugging. */
   getStats(): { chatCount: number; pendingCount: number } {
     let total = 0
     for (const cache of this.caches.values()) {
@@ -635,14 +605,4 @@ export class MessageIdCache {
     }
     return { chatCount: this.caches.size, pendingCount: total }
   }
-}
-
-// ─── Gate Logger (shared with gate.ts) ───
-
-let gateLog: (...args: unknown[]) => void = (...args) => {
-  console.log("[supervisor-gate]", ...args)
-}
-
-export function setCacheLogger(logFn: (...args: unknown[]) => void): void {
-  gateLog = logFn
 }
