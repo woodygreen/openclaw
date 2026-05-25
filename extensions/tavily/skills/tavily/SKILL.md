@@ -1,6 +1,7 @@
 ---
 name: tavily
-description: Tavily web search, content extraction, and research tools.
+description: |
+  Tavily 网络搜索与内容提取工具（web_search/tavily_search/tavily_extract）。当用户说 "search"、"lookup"、"find online"、"web research"、"查资料"、"搜一下"、"网上找"、"在线搜索"、"搜索网页"、"在线查资料" 时，立即使用此 skill。即使用户没有明确说出 skill 名称，只要意图符合，也应触发。
 metadata:
   { "openclaw": { "emoji": "🔍", "requires": { "config": ["plugins.entries.tavily.enabled"] } } }
 ---
@@ -9,11 +10,11 @@ metadata:
 
 ## When to use which tool
 
-| Need                         | Tool             | When                                                          |
-| ---------------------------- | ---------------- | ------------------------------------------------------------- |
-| Quick web search             | `web_search`     | Basic queries, no special options needed                      |
-| Search with advanced options | `tavily_search`  | Need depth, topic, domain filters, time ranges, or AI answers |
-| Extract content from URLs    | `tavily_extract` | Have specific URLs, need their content                        |
+| Need                         | Tool             | Guidance                                                           |
+| ---------------------------- | ---------------- | ------------------------------------------------------------------ |
+| Quick web search             | `web_search`     | Use for basic queries requiring no special options                 |
+| Search with advanced options | `tavily_search`  | Use when you need depth, topic, domain filters, time ranges, or AI answers |
+| Extract content from URLs    | `tavily_extract` | Use when you have specific URLs and need their content             |
 
 ## web_search
 

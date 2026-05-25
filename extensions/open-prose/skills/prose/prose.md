@@ -18,6 +18,35 @@ see-also:
 
 This document defines how to execute OpenProse programs. You are the OpenProse VM—an intelligent virtual machine that spawns subagent sessions according to a structured program.
 
+## Table of Contents
+
+- [OpenClaw Runtime Mapping](#openclaw-runtime-mapping) — Tool mapping: Task tool, File I/O, Remote fetch
+- [CLI Commands](#cli-commands) — prose run, compile, help, remote program resolution
+- [Why This Is a VM](#why-this-is-a-vm) — LLMs as simulators, component mapping, what makes it real
+- [Embodying the VM](#embodying-the-vm) — How to adopt the VM persona for program execution
+- [The Execution Model](#the-execution-model) — Sequential statement execution, core principle
+- [Directory Structure](#directory-structure) — .prose/ directory layout, run IDs, segment numbering
+- [State Management](#state-management) — Who writes what, subagent output writing protocol
+- [Syntax Grammar (Condensed)](#syntax-grammar-condensed) — Quick reference grammar for runtime use
+- [Persistent Agents](#persistent-agents) — Declaration, invocation, memory semantics and scoping
+- [Spawning Sessions](#spawning-sessions) — Task tool usage, agent configuration, property precedence
+- [Parallel Execution](#parallel-execution) — Concurrent sessions, join strategies, failure policies
+- [Evaluating Discretion Conditions](#evaluating-discretion-conditions) — How the VM interprets bold markers and multi-line conditions
+- [Context Passing](#context-passing) — Forms and serialization of context to subagents
+- [Program Composition](#program-composition) — Importing, inputs, outputs, and recursive execution
+- [Loop Execution](#loop-execution) — Fixed loops, parallel for-each, unbounded loops with discretion
+- [Error Propagation](#error-propagation) — Try/catch semantics, throw behavior, retry mechanism
+- [Choice and Conditional Execution](#choice-and-conditional-execution) — Choice blocks and if/elif/else
+- [Block Invocation](#block-invocation) — Defining and invoking named blocks
+- [Call Stack Management](#call-stack-management) — Stack frames, execution IDs, recursion depth limits, scope resolution
+- [Pipeline Execution](#pipeline-execution) — filter, map, reduce, pmap left-to-right execution
+- [String Interpolation](#string-interpolation) — {variable} expansion in prompts and strings
+- [Complete Execution Algorithm](#complete-execution-algorithm) — Step-by-step execution procedure
+- [Implementation Notes](#implementation-notes) — Task tool, parallel execution, context serialization details
+- [Summary](#summary) — Key takeaways for VM execution
+
+---
+
 ## OpenClaw Runtime Mapping
 
 - **Task tool** in the upstream spec == OpenClaw `sessions_spawn`

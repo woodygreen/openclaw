@@ -1,7 +1,7 @@
 ---
 name: feishu-drive
 description: |
-  Feishu cloud storage file management. Activate when user mentions cloud space, folders, drive.
+  飞书云盘文件管理（list/create_folder/move/delete 等）。当用户说 "upload file"、"download"、"storage"、"cloud files"、"云盘"、"飞书云盘" 时，立即使用此 skill。即使用户没有明确说出 skill 名称，只要意图符合，也应触发。
 ---
 
 # Feishu Drive Tool
@@ -11,6 +11,16 @@ Single tool `feishu_drive` for cloud storage operations.
 ## Token Extraction
 
 From URL `https://xxx.feishu.cn/drive/folder/ABC123` → `folder_token` = `ABC123`
+
+## Drive Workflow
+
+To find a file: start with `list` to browse folders, then use `info` for details on a specific file.
+To upload: use `upload` with the local file path and target folder_token.
+To download: use `download` with the file_token.
+To create a folder: first obtain a parent folder_token (e.g. from `list`), then use `create_folder`.
+To move a file: use `move` with the file_token and destination folder_token.
+
+⚠️ Bot accounts have no root folder by default — always use a folder_token obtained from `list` or shared by the user.
 
 ## Actions
 

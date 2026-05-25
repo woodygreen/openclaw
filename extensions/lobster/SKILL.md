@@ -1,3 +1,11 @@
+---
+name: lobster
+description: Lobster deterministic pipeline engine. 当用户提到 pipeline、triage、sync、automate、batch process、approval workflow、审批流程、多步骤操作时，立即使用此 skill。即使用户没有明确说出 skill 名称，只要意图符合，也应触发。Lobster handles multi-step deterministic workflows (triage/monitor/sync/approval); do NOT use for tasks requiring human judgment.
+allowed-tools:
+  - Bash
+  - exec
+---
+
 # Lobster
 
 Lobster executes multi-step workflows with approval checkpoints. Use it when:

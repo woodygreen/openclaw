@@ -1,7 +1,30 @@
 ---
 name: clawsweeper
-description: "Use for all ClawSweeper work: OpenClaw issue/PR sweep reports, commit-review reports, repair jobs, cloud fix PRs, @clawsweeper maintainer mention commands, trusted ClawSweeper-reviewed autofix/automerge, GitHub Actions monitoring, permissions, gates, and manual backfills."
+description: "Use immediately when asked about ClawSweeper reports, repair dispatch, @clawsweeper commands, automerge/autofix, Actions monitoring, or gate controls — triggers on 'run a sweep', 'check commit review', 'dispatch repair', 'open the gate', 'ClawSweeper status'."
+allowed-tools:
+  - Bash(git *)
+  - Bash(pnpm *)
+  - Bash(gh workflow run *)
+  - Bash(gh variable set *)
+  - Bash(gh api *)
+  - Bash(gh run list *)
 ---
+
+## Table of Contents
+
+- [Start](#start)
+- [One Bot, One App](#one-bot-one-app)
+- [Commit Reports](#commit-reports)
+- [Sweep Reports](#sweep-reports)
+- [Create One Repair Job](#create-one-repair-job)
+- [Replacement PRs](#replacement-prs)
+- [Gates](#gates)
+- [Maintainer Mentions](#maintainer-mentions)
+- [Trusted Autofix And Automerge](#trusted-autofix-and-automerge)
+- [Security Boundary](#security-boundary)
+- [Monitoring](#monitoring)
+- [OpenAI Interface](#openai-interface)
+- [Reading Output](#reading-output)
 
 # ClawSweeper
 
@@ -19,14 +42,12 @@ git pull --ff-only
 pnpm run build:all
 ```
 
-Do not overwrite unrelated edits. If the tree is dirty, inspect first and keep
-read-only report work read-only unless the requester asked to commit.
+Prefer preserving unrelated edits; inspect dirty trees before committing, and keep read-only report work read-only unless the requester asked to commit.
 
 ## One Bot, One App
 
 Use the ClawSweeper repo and the `clawsweeper` GitHub App. Use only
-`CLAWSWEEPER_*` configuration for this automation. Do not use legacy apps,
-variables, labels, or skills.
+`CLAWSWEEPER_*` configuration for this automation. The clawsweeper GitHub App is the sole authorized automation identity — legacy app names, variables, labels, and skills from prior iterations are deprecated and may cause permission or dispatch conflicts.
 
 Required app setup:
 
@@ -91,9 +112,7 @@ records/<repo-slug>/items/<number>.md
 records/<repo-slug>/closed/<number>.md
 ```
 
-Lead with counts, concrete findings, and report links. Do not post unsolicited
-GitHub comments from report-reading work. Public surfaces are markdown reports,
-durable ClawSweeper review comments, and optional checks.
+Lead with counts, concrete findings, and report links. Prefer posting comments only when explicitly requested or as durable ClawSweeper review comments, rather than posting unsolicited GitHub comments from report-reading work.
 
 PR reports include Codex `/review`-style `reviewFindings` with priority,
 confidence, repository-relative file, and line range. Public PR comments show a
@@ -143,8 +162,7 @@ pnpm run repair:dispatch -- jobs/openclaw/inbox/clawsweeper-openclaw-openclaw-12
   --model gpt-5.5
 ```
 
-Do not dispatch a just-created job before the job file is committed and pushed;
-the workflow reads the job path from GitHub.
+Prefer committing and pushing the job file before dispatching; the workflow reads the job path from GitHub.
 
 ## Replacement PRs
 
@@ -286,7 +304,7 @@ CLAWSWEEPER_MAX_REPAIRS_PER_HEAD=1
 
 ## Security Boundary
 
-Do not stage unapproved security-sensitive work for ClawSweeper Repair. Route
+Do not stage unapproved security-sensitive work for ClawSweeper Repair — ClawSweeper's deterministic worker lacks the security review authority and audit trail required for vulnerability handling; central security triage ensures proper disclosure timing and CVE coordination. Route
 vulnerability reports, CVE/GHSA/advisory work, leaked secrets/tokens/keys,
 plaintext secret storage, SSRF, XSS, CSRF, RCE, auth bypass, privilege
 escalation, and sensitive data exposure to central OpenClaw security handling.
@@ -294,9 +312,7 @@ escalation, and sensitive data exposure to central OpenClaw security handling.
 For PRs explicitly opted into `clawsweeper:autofix` or
 `clawsweeper:automerge`, security-sensitive review findings may dispatch
 bounded repair, but merge remains blocked until a later exact-head review is
-clean and the normal merge gates pass. Trust deterministic ClawSweeper security
-markers, labels, and job frontmatter; do not infer security handling from vague
-prose.
+clean and the normal merge gates pass. Prefer trusting deterministic ClawSweeper security markers, labels, and job frontmatter; avoid inferring security handling from vague prose.
 
 ## Monitoring
 
@@ -324,6 +340,10 @@ Target commit check:
 gh api "repos/openclaw/openclaw/commits/<sha>/check-runs?per_page=100" \
   --jq '.check_runs[] | select(.name=="ClawSweeper Commit Review") | [.status,.conclusion,.details_url] | @tsv'
 ```
+
+## OpenAI Interface
+
+`agents/openai.yaml` defines an OpenAI-compatible agent interface for ClawSweeper with a `display_name`, `short_description`, and `default_prompt`. Read `agents/openai.yaml` when integrating with OpenAI-compatible agent orchestrators or dispatching ClawSweeper commit review through external agent toolchains. External orchestrators that use the OpenAI agent protocol can invoke this skill through that interface to review recent ClawSweeper commit reports and summarize findings.
 
 ## Reading Output
 

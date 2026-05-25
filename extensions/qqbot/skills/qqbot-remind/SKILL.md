@@ -1,6 +1,7 @@
 ---
 name: qqbot-remind
-description: QQBot scheduled reminders. Create, list, and cancel one-time or recurring reminders when a QQ conversation involves reminders, alarms, or scheduled tasks.
+description: |
+  QQBot 定时提醒管理（create/list/cancel 一次性或周期提醒）。当用户说 "提醒"、"闹钟"、"定时"、"叫我"、"X分钟后"、"每天X点" 时，立即使用此 skill。即使用户没有明确说出 skill 名称，只要意图符合，也应触发。口头承诺提醒无效——必须调用工具注册定时任务。
 metadata: { "openclaw": { "emoji": "⏰", "requires": { "config": ["channels.qqbot"] } } }
 ---
 
@@ -8,9 +9,7 @@ metadata: { "openclaw": { "emoji": "⏰", "requires": { "config": ["channels.qqb
 
 ## ⚠️ 强制规则
 
-**当用户提到「提醒」「闹钟」「定时」「X分钟/小时后」「每天X点」「叫我」等任何涉及延时或定时的请求时，你必须调用工具，绝对不能只用自然语言回复说"好的，我会提醒你"！**
-
-你没有内存或后台线程，口头承诺"到时候提醒"是无效的——只有调用工具才能真正注册定时任务。
+务必调用工具（`qqbot_remind` 或 `cron`）注册定时任务，不能仅用自然语言回复"好的，我会提醒你"。原因：你没有内存或后台线程，口头承诺"到时候提醒"无法兑现——只有调用工具才能真正注册定时任务。
 
 ---
 
@@ -43,10 +42,10 @@ metadata: { "openclaw": { "emoji": "⏰", "requires": { "config": ["channels.qqb
 
 ### 核心规则
 
-> **payload.kind 必须是 `"agentTurn"`，绝对不能用 `"systemEvent"`！**
+> **payload.kind 需要是 `"agentTurn"`，不能用 `"systemEvent"`！**
 > `systemEvent` 只在 AI 会话内部注入文本，用户收不到 QQ 消息。
 
-**不可更改字段**：
+**固定字段（更改会导致消息投递失败）**：
 
 | 字段                 | 固定值        | 原因                         |
 | -------------------- | ------------- | ---------------------------- |

@@ -1,12 +1,17 @@
 ---
 name: optimizetests
-description: Optimize OpenClaw slow tests, imports, misplaced coverage, and CI wall time without dropping coverage.
+description: |
+  Optimize OpenClaw slow tests, imports, misplaced coverage, and CI wall time without dropping coverage.
+  当用户说 "tests are slow"、"CI timeout"、"optimize test suite"、"speed up tests"、"benchmark tests" 时，立即使用此 skill。即使用户没有明确说出 skill 名称，只要意图符合，也应触发。
+allowed-tools:
+  - Bash(pnpm *)
+  - Bash(timeout *)
+  - Bash(gh *)
 ---
 
 # Optimize Tests
 
-Goal: real OpenClaw test/runtime speedups with coverage intact. Do not add shards,
-skip assertions, weaken gates, or tune runner flags as the main fix.
+Goal: real OpenClaw test/runtime speedups with coverage intact. Do not add shards, skip assertions, weaken gates, or tune runner flags as the main fix — shards mask latency without fixing it; skipping assertions silently drops coverage; weakening gates lets regressions through; tuning runner flags is ephemeral and does not address root causes.
 
 ## Runbook
 

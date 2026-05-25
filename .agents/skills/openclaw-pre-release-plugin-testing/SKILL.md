@@ -1,6 +1,15 @@
 ---
 name: openclaw-pre-release-plugin-testing
-description: Plan and run pre-release OpenClaw plugin validation across bundled plugins, package artifacts, lifecycle commands, doctor/fix, config round-trip, gateway startup, SDK compatibility, Docker E2E, Package Acceptance, and Testbox proof.
+description: Use immediately when the user asks for plugin release confidence, pre-release signoff, beta/regression testing, plugin lifecycle sweeps, package-artifact plugin proof, or "what else should we test before release?" Covers bundled plugin lifecycle, package artifact behavior, doctor/fix/config validation, gateway bootstrap, SDK compatibility, Docker E2E, Package Acceptance, and Testbox proof.
+allowed-tools:
+  - Bash:pnpm docs:list
+  - Bash:pnpm changed:lanes
+  - Bash:pnpm check:changed
+  - Bash:pnpm run test:extensions
+  - Bash:pnpm test:docker
+  - Bash:pnpm test:install:smoke
+  - Bash:gh workflow run
+  - Bash:docker
 ---
 
 # OpenClaw Pre-Release Plugin Testing
@@ -49,7 +58,7 @@ Prefer this order:
    package-boundary checks, or focused Docker lanes.
 4. **Local targeted commands only** for small format/static/unit probes.
 
-Avoid long package Docker runs from a stale sparse worktree. If Testbox sync
+Avoid long package Docker runs from a stale sparse worktree — stale sparse trees can report hundreds of phantom changed files and may delete real package inputs, producing false failures that waste a full VM cycle. If Testbox sync
 reports hundreds of changed files or starts deleting package inputs, stop and
 warm a fresh box from current `main`, or switch to Package Acceptance.
 
@@ -232,3 +241,7 @@ next highest-value gap:
 
 Say clearly when a failure is Testbox sync/env damage rather than product
 behavior, and prove that with a clean rerun or current-main comparison.
+
+## OpenAI Codex Agent Mapping
+
+The `agents/openai.yaml` in this skill directory provides the OpenAI Codex agent interface definition. It maps this skill to the Codex `openclaw-pre-release-plugin-testing` agent with a display name, short description, and default prompt that references the `$openclaw-pre-release-plugin-testing` skill token. This file is used by OpenAI Codex integrations to discover and invoke this skill; it is not directly consumed by Claude Code but must stay in sync with the SKILL.md description so both agent platforms present consistent metadata.

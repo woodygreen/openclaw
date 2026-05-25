@@ -1,9 +1,34 @@
 ---
 name: crabbox
-description: Use Crabbox for OpenClaw remote Linux validation. Default to Blacksmith Testbox; includes direct Blacksmith and owned AWS/Hetzner fallback notes when Crabbox fails.
+description: Use immediately when OpenClaw needs remote Linux validation, Blacksmith Testbox dispatch, Docker/E2E package lanes, broad CI-parity checks, reusable box management, or any Crabbox provider operation. Also trigger when the user says "run on crabbox", "testbox", "blacksmith testbox", "remote test", "E2E on linux", or "crabbox".
+allowed-tools:
+  - Bash(pnpm crabbox:run *)
+  - Bash(pnpm crabbox:stop *)
+  - Bash(pnpm crabbox:warmup *)
+  - Bash(pnpm crabbox:hydrate *)
+  - Bash(../crabbox/bin/crabbox *)
+  - Bash(blacksmith *)
+  - Bash(command -v crabbox)
+  - Bash(command -v blacksmith)
+  - Bash(brew install openclaw/tap/crabbox)
 ---
 
 # Crabbox
+
+<!-- TOC start -->
+- [First Checks](#first-checks)
+- [macOS And Windows Targets](#macos-and-windows-targets)
+- [Default Blacksmith Backend](#default-blacksmith-backend)
+- [Efficient Bug E2E Verification](#efficient-bug-e2e-verification)
+- [Reuse And Keepalive](#reuse-and-keepalive)
+- [Interactive Desktop And WebVNC](#interactive-desktop-and-webvnc)
+- [If Crabbox Fails](#if-crabbox-fails)
+- [Blacksmith Backend Notes](#blacksmith-backend-notes)
+- [Owned Cloud Fallback](#owned-cloud-fallback)
+- [Diagnostics](#diagnostics)
+- [Failure Triage](#failure-triage)
+- [Boundary](#boundary)
+<!-- TOC end -->
 
 Use Crabbox when OpenClaw needs remote Linux proof for broad tests, CI-parity
 checks, secrets, hosted services, Docker/E2E/package lanes, warmed reusable

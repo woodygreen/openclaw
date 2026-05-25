@@ -1,29 +1,48 @@
 ---
 name: openclaw-qa-testing
-description: Run, watch, debug, extend, or explain OpenClaw qa-lab and qa-channel scenarios, artifacts, and live lanes.
+description: Use immediately when user wants to run, watch, debug, extend, or explain OpenClaw QA scenarios, qa-lab/qa-channel lanes, character evals, OTEL smoke tests, or Matrix live profiles. Also trigger when user says 'run QA', 'test this scenario', 'QA suite', 'character eval', 'smoke test', 'QA lane', 'watch QA output', or references qa-lab/qa-channel artifacts.
+allowed-tools:
+  - Bash(pnpm openclaw qa *)
+  - Bash(pnpm qa:otel:smoke)
+  - Bash(pnpm test:docker*)
+  - Bash(pnpm canvas:a2ui:bundle)
+  - Bash(pnpm leak:embedded-run)
+  - Bash(gh workflow run)
+  - Bash(gh api repos/openclaw/openclaw/actions/*)
+  - Bash(op *)  # only inside tmux for QA secret lookup
+  - Bash(node .agents/skills/openclaw-test-heap-leaks/scripts/heapsnapshot-delta.mjs *)
+  - Bash(node scripts/test-update-memory-hotspots.mjs)
+  - Read
+  - Edit
+  - Glob
+  - Grep
 ---
 
 # OpenClaw QA Testing
 
 Use this skill for `qa-lab` / `qa-channel` work. Repo-local QA only.
 
+## Companion agent config
+
+The `agents/openai.yaml` file in this skill directory configures the skill for Codex/OpenAI agent integrations. It sets the display name, short description, and default prompt so that the OpenAI agent platform can discover and invoke `$openclaw-qa-testing` with the correct model policy (openai/gpt-5.4, fast mode). This file is referenced by the OpenAI agent runtime, not by the SKILL.md body — it lives in `agents/` because the agent platform expects it at that fixed path.
+
 ## Read first
 
-- `docs/concepts/qa-e2e-automation.md`
-- `docs/help/testing.md`
-- `docs/channels/qa-channel.md`
-- `qa/README.md`
-- `qa/scenarios/index.md`
-- `extensions/qa-lab/src/suite.ts`
-- `extensions/qa-lab/src/character-eval.ts`
+- `docs/concepts/qa-e2e-automation.md` — read when understanding QA architecture and the overall automation design
+- `docs/help/testing.md` — read when looking up test runner flags, environment variables, or general testing help
+- `docs/channels/qa-channel.md` — read when working with the synthetic channel or channel-specific test routing
+- `qa/README.md` — read when setting up a new scenario or understanding the scenario directory layout
+- `qa/scenarios/index.md` — read when adding or updating scenario kickoff expectations
+- `extensions/qa-lab/src/suite.ts` — read when debugging suite execution, live lanes, or assertion failures
+- `extensions/qa-lab/src/character-eval.ts` — read when running or modifying character/persona evals
 
 ## Model policy
 
 - Live OpenAI lane: `openai/gpt-5.4`
 - Fast mode: on
 - Do not use:
-  - `openai/gpt-5.4-pro`
-  - `openai/gpt-5.4-mini`
+  - `openai/gpt-5.4-pro` — too expensive for routine QA runs
+  - `openai/gpt-5.4-mini` — lacks the reasoning depth needed for character evals
 - Only change model policy if the user explicitly asks.
 
 ## Default workflow

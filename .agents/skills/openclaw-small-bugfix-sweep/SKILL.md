@@ -1,6 +1,16 @@
 ---
 name: openclaw-small-bugfix-sweep
-description: Fix only small, high-certainty OpenClaw bugs from a pasted issue/PR list after deep code review.
+description: |
+  批量修复 OpenClaw 小 bug：对粘贴的 issue/PR 引用进行审查、验证和本地修补。当用户说 "fix this bug"、"patch this issue"、"quick fix"、"bug sweep"、"small bugfix"、"sweep bugs"、"fix minor bugs" 时，立即使用此 skill。即使用户没有明确说出 skill 名称，只要意图符合批量处理小 bug 修复或 issue/PR 分类，也应触发。
+allowed-tools:
+  - Bash(gh issue view *)
+  - Bash(gh issue list *)
+  - Bash(gh pr view *)
+  - Bash(gh pr list *)
+  - Read
+  - Edit
+  - Grep
+  - Glob
 ---
 
 # OpenClaw Small Bugfix Sweep
@@ -19,11 +29,13 @@ Default flow:
 4. After Peter approves shipping, make one commit per accepted fix, with a changelog entry for each user-facing fix.
 5. Pull/rebase, push, then comment and close only the fixed or explicitly triaged-closed issues.
 
-Do not batch unrelated issue fixes into one commit. Do not push, create PRs, comment, close, label, land, merge, or otherwise publish during the review/prove phase.
+Do not batch unrelated issue fixes into one commit — cleaner review, independent rollback. Do not push, create PRs, comment, close, label, land, merge, or otherwise publish during the review/prove phase.
 
 ## Companion Skills
 
 Use `$gitcrawl` first, `$openclaw-pr-maintainer` for live GitHub hygiene, `$github-deep-review` posture for source tracing, and `$openclaw-testing` for proof.
+
+Use `$gitcrawl` first for duplicate candidate discovery before live GitHub verification; use `$openclaw-pr-maintainer` when the fix needs a PR; use `$openclaw-testing` when gates need rerunning.
 
 ## Loop
 
@@ -39,7 +51,7 @@ For each ref:
 8. Run the smallest meaningful gate.
 9. Continue until every pasted ref is fixed or classified.
 
-No subagents unless explicitly requested.
+No subagents unless explicitly requested — single-thread traceability for review.
 
 ## Skip If
 
@@ -57,7 +69,7 @@ Skip with terse reason. Do not pad with low-confidence fixes.
 
 - owner module first; generic seam only when required
 - existing patterns/helpers/types
-- no drive-by refactors
+- no drive-by refactors — reduces diff noise, keeps focus on bug
 - tests near failing surface
 - docs only for changed public behavior
 - no commit during the review/prove phase

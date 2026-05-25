@@ -2,6 +2,7 @@
 name: prose
 description: OpenProse VM skill pack. Activate on any `prose` command, .prose files, or OpenProse mentions; orchestrates multi-agent workflows.
 metadata: { "openclaw": { "emoji": "🪶", "homepage": "https://www.prose.md" } }
+allowed-tools: ["Bash", "exec"]
 ---
 
 # OpenProse Skill
@@ -138,14 +139,14 @@ When you need to read `prose.md` or `compiler.md`, read them from the same direc
 
 | File                       | Purpose                         | When to Load                                                          |
 | -------------------------- | ------------------------------- | --------------------------------------------------------------------- |
-| `prose.md`                 | VM / Interpreter                | Always load to run programs                                           |
-| `state/filesystem.md`      | File-based state                | Load with VM (default)                                                |
+| `prose.md`                 | VM / Interpreter（1266 lines, contains full language reference and examples） | Always load to run programs                                           |
+| `state/filesystem.md`      | File-based state（512 lines）   | Load with VM (default)                                                |
 | `state/in-context.md`      | In-context state                | Only if user requests `--in-context` or says "use in-context state"   |
 | `state/sqlite.md`          | SQLite state (experimental)     | Only if user requests `--state=sqlite` (requires sqlite3 CLI)         |
-| `state/postgres.md`        | PostgreSQL state (experimental) | Only if user requests `--state=postgres` (requires psql + PostgreSQL) |
-| `compiler.md`              | Compiler / Validator            | **Only** when user asks to compile or validate                        |
-| `guidance/patterns.md`     | Best practices                  | Load when **writing** new .prose files                                |
-| `guidance/antipatterns.md` | What to avoid                   | Load when **writing** new .prose files                                |
+| `state/postgres.md`        | PostgreSQL state (experimental)（904 lines） | Only if user requests `--state=postgres` (requires psql + PostgreSQL) |
+| `compiler.md`              | Compiler / Validator（2974 lines, contains VM spec, opcode definitions, and compilation rules — read sections selectively, not the whole file） | **Only** when user asks to compile or validate                        |
+| `guidance/patterns.md`     | Best practices（712 lines, contains pattern catalog） | Load when **writing** new .prose files                                |
+| `guidance/antipatterns.md` | What to avoid（962 lines, contains antipattern catalog） | Load when **writing** new .prose files                                |
 
 ### Authoring Guidance
 

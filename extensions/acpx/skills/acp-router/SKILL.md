@@ -1,7 +1,9 @@
 ---
 name: acp-router
-description: Route plain-language requests for Pi, Claude Code, Cursor, Copilot, OpenClaw ACP, OpenCode, Gemini CLI, Qwen, Kiro, Kimi, iFlow, Factory Droid, Kilocode, or explicit ACP harness work into either OpenClaw ACP runtime sessions or direct acpx-driven sessions ("telephone game" flow). For coding-agent thread requests, read this skill first, then use only `sessions_spawn` for thread creation. Codex chat binding defaults to the native Codex app-server plugin unless ACP is explicit or background spawn needs ACP.
+description: |
+  将自然语言请求路由到对应 ACP 编码助手（Pi/Claude Code/Cursor/Copilot/OpenClaw/OpenCode/Gemini/Qwen/Kiro/Kimi/iFlow/Droid/Kilocode）的 ACP runtime 或 acpx 直连会话。当用户说 "run in Pi"、"在Pi中运行"、"用 Claude Code"、"帮我用Claude Code跑"、"让 Cursor 做一下"、"编码助手"、"spawn coding agent"、"spawn编码agent"、"ACP harness"、"ACP路由"、"acpx session" 时，立即使用此 skill。即使用户没有明确说出 skill 名称，只要意图符合，也应触发。编码线程创建必须先读此 skill，然后只用 `sessions_spawn`。
 user-invocable: false
+allowed-tools: ["Bash", "exec"]
 ---
 
 # ACP Harness Router
@@ -20,7 +22,7 @@ Trigger this skill when the user asks OpenClaw to:
 - relay instructions to an external coding harness
 - keep an external harness conversation in a thread-like conversation
 
-Mandatory preflight for coding-agent thread requests:
+Preflight for coding-agent thread requests (reading this skill first ensures `sessions_spawn` is used correctly and avoids subagent runtime misrouting):
 
 - Before creating any thread for ACP harness work, read this skill first in the same turn.
 - After reading, follow `OpenClaw ACP runtime path` below; do not use `message(action="thread-create")` for ACP harness thread spawn.
@@ -40,9 +42,9 @@ Use direct `acpx` when one of these is true:
 
 Do not use:
 
-- `subagents` runtime for harness control
-- `/acp` command delegation as a requirement for the user
-- PTY scraping of supported ACP harness CLIs when `acpx` is available
+- `subagents` runtime for harness control — `sessions_spawn` provides proper ACP lifecycle management, including session tracking and error propagation
+- `/acp` command delegation as a requirement for the user — the skill should route directly without forcing the user into a separate command step
+- PTY scraping of supported ACP harness CLIs when `acpx` is available — `acpx` offers structured session management and output parsing that PTY scraping cannot replicate
 
 ## AgentId mapping
 
@@ -116,7 +118,7 @@ When offering fallback, keep ACP first:
 - Option 1: retry ACP spawn after showing exact failing step
 - Option 2: direct acpx telephone-game flow
 
-Do not default to subagent runtime for these requests.
+Do not default to subagent runtime for these requests — ACP lifecycle tracking is lost under subagent, which breaks thread continuity and error propagation.
 
 ## ACPX install and version policy (direct acpx path)
 
@@ -234,7 +236,7 @@ If your local Cursor install still exposes ACP as `agent acp`, set that as the `
   - for thread-spawn ACP requests, install plugin-local pinned acpx in the ACPX plugin package immediately
   - restart gateway after install and offer to run the restart automatically
   - then retry once
-  - do not ask for install permission first unless policy explicitly requires it
+  - do not ask for install permission first unless policy explicitly requires it — proactively repair instead of blocking the user
   - do not install global `acpx` unless explicitly requested
 - adapter command missing (for example `claude-agent-acp` not found):
   - for thread-spawn ACP requests, first restore built-in defaults by removing broken `~/.acpx/config.json` agent overrides

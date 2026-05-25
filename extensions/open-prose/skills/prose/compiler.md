@@ -55,30 +55,33 @@ If a construct is ambiguous or non-obvious, it should be flagged or transformed 
 
 ## Table of Contents
 
-1. [Overview](#overview)
-2. [File Format](#file-format)
-3. [Comments](#comments)
-4. [String Literals](#string-literals)
-5. [Use Statements](#use-statements-program-composition)
-6. [Input Declarations](#input-declarations)
-7. [Output Bindings](#output-bindings)
-8. [Program Invocation](#program-invocation)
-9. [Agent Definitions](#agent-definitions)
-10. [Session Statement](#session-statement)
-11. [Resume Statement](#resume-statement)
-12. [Variables & Context](#variables--context)
-13. [Composition Blocks](#composition-blocks)
-14. [Parallel Blocks](#parallel-blocks)
-15. [Fixed Loops](#fixed-loops)
-16. [Unbounded Loops](#unbounded-loops)
-17. [Pipeline Operations](#pipeline-operations)
-18. [Error Handling](#error-handling)
-19. [Choice Blocks](#choice-blocks)
-20. [Conditional Statements](#conditional-statements)
-21. [Execution Model](#execution-model)
-22. [Validation Rules](#validation-rules)
-23. [Examples](#examples)
-24. [Future Features](#future-features)
+- [Document Purpose: Compiler + Validator](#document-purpose-compiler-validator) — Dual role: compiling .prose programs and validating self-evidence
+- [Overview](#overview) — Design principles, implementation status, language philosophy
+- [File Format](#file-format) — .prose file structure, frontmatter, and program layout
+- [Comments](#comments) — Syntax, rules, compilation behavior for single/multi-line comments
+- [String Literals](#string-literals) — Syntax, escape sequences, interpolation, multi-line strings, validation
+- [Use Statements (Program Composition)](#use-statements-program-composition) — Imports, URL resolution, validation, execution semantics
+- [Input Declarations](#input-declarations) — Program input parameters, binding semantics, validation
+- [Output Bindings](#output-bindings) — Program output exports, semantics, validation rules
+- [Program Invocation](#program-invocation) — Calling programs with arguments, destructuring outputs, execution semantics
+- [Agent Definitions](#agent-definitions) — Agent properties: model, persist, skills, permissions, validation
+- [Session Statement](#session-statement) — Spawning subagent sessions: syntax variants, properties, execution flow, validation
+- [Resume Statement](#resume-statement) — Resuming persistent agents: syntax, semantics, validation
+- [Variables & Context](#variables--context) — Let/const bindings, context property forms, flat namespace requirement
+- [Composition Blocks](#composition-blocks) — do blocks, block definitions, parameters, arrow operator, hoisting, nested composition
+- [Parallel Blocks](#parallel-blocks) — Concurrent execution, join strategies, failure policies, mixed composition
+- [Fixed Loops](#fixed-loops) — repeat, for-each, parallel for-each, variable scoping, nesting
+- [Unbounded Loops](#unbounded-loops) — Discretion markers, loop until/while, iteration variable, safety limits
+- [Pipeline Operations](#pipeline-operations) — Pipe operator, filter, map, reduce, pmap, chaining, variable scoping
+- [Error Handling](#error-handling) — try/catch/finally, throw, nested error handling, parallel errors, retry
+- [Choice Blocks](#choice-blocks) — Multi-option selection with criteria evaluation
+- [Conditional Statements](#conditional-statements) — if/elif/else with discretion conditions and multi-line conditions
+- [Execution Model](#execution-model) — Two-phase model: compilation (static) then runtime (intelligent)
+- [Validation Rules](#validation-rules) — Error categories, warnings, error message format
+- [Examples](#examples) — Minimal program, research pipeline, code review, workflow with skills/permissions
+- [Future Features](#future-features) — Planned tiers: extended features and tooling
+- [Syntax Grammar (Implemented)](#syntax-grammar-implemented) — Complete formal grammar specification for the language
+- [Compiler API](#compiler-api) — Programmatic compilation interface
 
 ---
 

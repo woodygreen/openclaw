@@ -1,7 +1,8 @@
 ---
 name: browser-automation
-description: Use when controlling web pages with the OpenClaw browser tool, especially multi-step flows, login checks, tab management, or recovery from stale refs/timeouts.
+description: Use when controlling web pages with the OpenClaw browser tool, especially multi-step flows, login checks, tab management, or recovery from stale refs/timeouts. Triggers on "navigate", "click", "form fill", "scrape", "网页自动化", "浏览器操作".
 user-invocable: false
+allowed-tools: ["Bash", "exec"]
 ---
 
 # Browser Automation
@@ -61,7 +62,7 @@ If a retry creates duplicates, close the extras by `tabId`:
 { "action": "close", "targetId": "t3" }
 ```
 
-Do not pass bare numbers like `"2"` as `targetId`. Numeric tab positions are only for the CLI `openclaw browser tab select 2` helper; browser tool calls need a `suggestedTargetId`, label, `tabId`, or raw target id.
+Do not pass bare numbers like `"2"` as `targetId` because the CLI helper and browser tool call use different identifier formats; numeric tab positions are only for the CLI `openclaw browser tab select 2` helper, while browser tool calls need a `suggestedTargetId`, label, `tabId`, or raw target id.
 
 ## Stale Ref Recovery
 
@@ -76,7 +77,7 @@ If an action fails with a missing or stale ref:
 
 Use `profile="user"` only when existing cookies/login matter. This attaches to the user's running Chromium-based browser.
 
-For `profile="user"` and other existing-session profiles, omit `timeoutMs` on `act:type`, `evaluate`, `hover`, `scrollIntoView`, `drag`, `select`, and `fill`; that driver rejects per-call timeout overrides for those actions.
+For `profile="user"` and other existing-session profiles, omit `timeoutMs` on `act:type`, `evaluate`, `hover`, `scrollIntoView`, `drag`, `select`, and `fill` because the browser driver does not support custom timeouts in user-profile mode; that driver rejects per-call timeout overrides for those actions.
 
 ## Google Meet Notes
 

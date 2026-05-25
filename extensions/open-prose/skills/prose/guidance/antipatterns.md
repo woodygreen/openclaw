@@ -13,6 +13,17 @@ see-also:
 
 This document catalogs patterns that lead to brittle, expensive, slow, or unmaintainable programs. Each antipattern includes recognition criteria and remediation guidance.
 
+## Table of Contents
+
+- [Structural Antipatterns](#structural-antipatterns) — God session, sequential-when-parallel, spaghetti context, parallel-then-synthesize, copy-paste workflows
+- [Robustness Antipatterns](#robustness-antipatterns) — Unbounded loop, optimistic execution, ignored errors, vague discretion, catch-and-swallow
+- [Cost Antipatterns](#cost-antipatterns) — Opus-for-everything, context bloat, unnecessary iteration, redundant computation
+- [Performance Antipatterns](#performance-antipatterns) — Eager over-computation, over-parallelization, premature parallelization, synchronous fire-and-forget
+- [Maintainability Antipatterns](#maintainability-antipatterns) — Magic strings, opaque workflow, implicit dependencies, mixed-concerns agent
+- [Logic Antipatterns](#logic-antipatterns) — Infinite refinement, assertion-as-action, false parallelism, exception-as-flow-control, excessive checkpoints, fixed observation window
+- [Security Antipatterns](#security-antipatterns) — Unvalidated input, overprivileged agents
+- [Summary](#summary) — Antipattern avoidance guidelines
+
 ---
 
 ## Structural Antipatterns

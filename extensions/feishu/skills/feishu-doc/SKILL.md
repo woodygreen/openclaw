@@ -1,7 +1,7 @@
 ---
 name: feishu-doc
 description: |
-  Feishu document read/write operations. Activate when user mentions Feishu docs, cloud docs, or docx links.
+  飞书文档读写操作（read/write/create/append/list_blocks 等）。当用户说 "飞书文档"、"编辑文档"、"写文档"、"云文档"、"docx链接"、"Feishu doc"、"create document"、"document content"、"更新文档"、"read document" 时，立即使用此 skill。即使用户没有明确说出 skill 名称，只要意图符合，也应触发。
 ---
 
 # Feishu Document Tool
@@ -23,6 +23,8 @@ From URL `https://xxx.feishu.cn/docx/ABC123def` → `doc_token` = `ABC123def`
 Returns: title, plain text content, block statistics. Check `hint` field - if present, structured content (tables, images) exists that requires `list_blocks`.
 
 ### Write Document (Replace All)
+
+Use `write` when replacing entire document content; use `append` for incremental updates.
 
 ```json
 { "action": "write", "doc_token": "ABC123def", "content": "# Title\n\nMarkdown content..." }

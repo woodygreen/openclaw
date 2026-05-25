@@ -217,6 +217,7 @@ test/fixtures/openclaw-vitest-unit-report.json
 analysis/
 .artifacts/qa-e2e/
 /runs/
+/debug
 /data/rtt.jsonl
 extensions/qa-lab/web/dist/
 

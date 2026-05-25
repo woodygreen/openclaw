@@ -1,6 +1,25 @@
 ---
 name: openclaw-pr-maintainer
-description: Use immediately for any pasted OpenClaw GitHub issue or PR URL/number, and for OpenClaw issue/PR review, triage, duplicate search, opener identity/who wrote it, author account age/activity, comments, labels, close, land, or maintainer evidence checks.
+description: |
+  OpenClaw GitHub issue/PR 审查、分类、重复搜索、关闭、合并及维护者证据检查。当用户说 "review PR"、"triage issues"、"close issue"、"land PR"、"duplicate search"、"who wrote this"、"PR审查"、"maintain PR"、"review open PRs" 时，立即使用此 skill。即使用户没有明确说出 skill 名称，只要粘贴了 OpenClaw GitHub issue/PR URL/编号或意图符合审查/分类/维护流程，也应触发。
+allowed-tools:
+  - Bash(gh issue view *)
+  - Bash(gh pr view *)
+  - Bash(gh api *)
+  - Bash(gh search *)
+  - Bash(gh issue comment *)
+  - Bash(gh pr comment *)
+  - Bash(gh issue close *)
+  - Bash(gh pr close *)
+  - Bash(gh issue list *)
+  - Bash(gh pr list *)
+  - Bash(gh label *)
+  - Bash(gitcrawl *)
+  - Bash(jq *)
+  - Read
+  - Edit
+  - Glob
+  - Grep
 ---
 
 # OpenClaw PR Maintainer
@@ -39,6 +58,7 @@ gitcrawl cluster-detail openclaw/openclaw --id <cluster-id> --member-limit 20 --
 ```
 
 - The helper reports repo-local activity first and can fetch public GitHub contribution totals for the same window with `--global`; run the global form by default for review/triage identity summaries.
+- Read `scripts/github-activity.sh` when you need to understand the activity-lookup helper's output format or available flags.
 - If the global contribution graph reports zero or looks inconsistent with visible public activity, sanity-check with `gh api users/<login>`, `gh api 'users/<login>/events/public?per_page=100'`, and recent public repo commits before calling the account inactive.
 - The helper is intentionally cache-friendly for gitcrawl-backed `gh`: it rounds repo-local windows to the UTC day, rounds global contribution windows to the UTC hour, and counts PRs/issues from one paginated issues response before fetching commits separately. Prefer reusing the helper instead of hand-rolling several `gh api` loops.
 - If the contribution graph is misleading or zero but public events/repos show activity, keep it one line, for example:
@@ -146,7 +166,7 @@ Output only qualifying candidates, with: ref, surface, proof, cause, fix sketch,
 - Review the surrounding code path, not just changed lines. Open the caller, callee, data contracts, adjacent tests, and owner module.
 - For large-codebase PRs, sample enough related files to understand the runtime boundary before deciding. Default to more code reading when the change touches agents, gateway, plugins, auth, sessions, process, config, or provider/runtime seams.
 - Compare the PR against current `origin/main` behavior. Check whether recent main already changed the same surface.
-- Dependency-backed behavior: MUST read upstream docs/source/types before judging API use, defaults, output shapes, errors, timeouts, memory behavior, or compatibility. Do not assume dependency contracts from memory or PR text.
+- Dependency-backed behavior: must read upstream docs/source/types before judging API use, defaults, output shapes, errors, timeouts, memory behavior, or compatibility. Do not assume dependency contracts from memory or PR text.
 - Judge solution quality, not only correctness. Ask whether the PR is the clean owner-boundary fix or a wart/workaround that should be replaced by a small refactor, moved seam, contract change, or deletion of duplicate logic.
 - Mention the main files read when the verdict depends on code-path evidence.
 

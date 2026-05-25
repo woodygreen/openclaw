@@ -1,9 +1,21 @@
 ---
 name: openclaw-parallels-smoke
-description: Run, rerun, debug, or interpret OpenClaw Parallels install, onboarding, gateway smoke, and upgrade checks.
+description: Use immediately when the user asks to run, smoke, debug, rerun, or interpret Parallels VM tests, guest install/onboarding, gateway verification, upgrade/update checks, or cross-platform e2e testing. Covers macOS/Windows/Linux fresh install, same-guest update, npm-update aggregate, Discord roundtrip, and snapshot/timeout diagnostics.
+allowed-tools:
+  - Bash:pnpm
+  - Bash:timeout
+  - Bash:gtimeout
+  - Bash:prlctl
+  - Bash:npm
+  - Bash:openclaw
+  - Bash:gh api
+  - Bash:jq
+  - Bash:bash
 ---
 
 # OpenClaw Parallels Smoke
+
+**Sections**: [Global rules](#global-rules) · [npm install then update](#npm-install-then-update) · [CLI invocation footgun](#cli-invocation-footgun) · [macOS flow](#macos-flow) · [Windows flow](#windows-flow) · [Linux flow](#linux-flow) · [Discord roundtrip](#discord-roundtrip)
 
 Use this skill for Parallels guest workflows and smoke interpretation. Do not load it for normal repo work.
 
@@ -15,7 +27,7 @@ Use this skill for Parallels guest workflows and smoke interpretation. Do not lo
 - Treat `precheck=latest-ref-fail` on that stable pre-upgrade lane as baseline, not automatically a regression.
 - Pass `--json` for machine-readable summaries.
 - Per-phase logs land under `.artifacts/parallels/openclaw-parallels-*` by default. Override with `OPENCLAW_PARALLELS_ARTIFACT_ROOT` when a run needs another artifact volume.
-- Do not run local and gateway agent turns in parallel on the same fresh workspace or session.
+- Do not run local and gateway agent turns in parallel on the same fresh workspace or session, because shared session state can corrupt the agent turn result.
 - Hard-cap every top-level Parallels lane with host `timeout --foreground` (or `gtimeout --foreground` if that is the available binary) so a stalled install, snapshot switch, or `prlctl exec` transport cannot consume the rest of the testing window. Defaults:
   - macOS: `75m`
   - Linux: `75m`

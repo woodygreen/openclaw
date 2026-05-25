@@ -1,6 +1,15 @@
 ---
 name: openclaw-secret-scanning-maintainer
-description: Triage, redact, clean up, and resolve OpenClaw GitHub Secret Scanning alerts in issues or PRs.
+description: |
+  处理 OpenClaw repo 的 GitHub Secret Scanning 告警，识别泄露凭据并执行清除、通知、解决流程。当用户说 "secret scanning"、"security alert"、"leaked secret"、"credential exposure"、"secret leak"、"redact secret"、"secret scan"、"leaked credentials"、"GHSA" 时，立即使用此 skill。即使用户没有明确说出 skill 名称，只要意图符合处理安全扫描告警或凭据泄露，也应触发。仅限维护者使用 — 需要仓库管理员权限来编辑/删除评论和解决告警。
+allowed-tools:
+  - Bash(node .agents/skills/openclaw-secret-scanning-maintainer/scripts/secret-scanning.mjs *)
+  - Bash(gh api repos/openclaw/openclaw/secret-scanning/*)
+  - Bash(gh api repos/openclaw/openclaw/issues/*)
+  - Bash(gh api repos/openclaw/openclaw/pulls/*)
+  - Bash(gh api graphql *)
+  - Read
+  - Edit
 ---
 
 # OpenClaw Secret Scanning Maintainer
@@ -9,7 +18,7 @@ description: Triage, redact, clean up, and resolve OpenClaw GitHub Secret Scanni
 
 Use this skill when processing alerts from `https://github.com/openclaw/openclaw/security/secret-scanning`.
 
-**Language rule:** All notification comments and replacement comments MUST be written in English.
+**Language rule:** All notification comments and replacement comments must be written in English.
 
 ## Script
 
@@ -146,7 +155,7 @@ Contact GitHub Support to purge: https://support.github.com/contact
 Request purge of issue/PR #{NUMBER} userContentEdits.
 ```
 
-> **CRITICAL:** Do NOT mention edit history or the "edited" button in any public comment or resolution_comment.
+> **Important:** Do not mention edit history or the "edited" button in any public comment or resolution_comment — this information could help attackers locate plaintext secrets in edit history.
 
 ### Commits
 
@@ -188,7 +197,7 @@ After processing, create a JSON results file and pass it to the summary command:
 node secret-scanning.mjs summary /tmp/results.json
 ```
 
-The script outputs a block delimited by `---BEGIN SUMMARY---` and `---END SUMMARY---`. **You MUST output the content between these markers verbatim to the user. Do NOT rephrase, reformat, abbreviate, or create your own summary.** The script already includes full URLs for every alert and location.
+The script outputs a block delimited by `---BEGIN SUMMARY---` and `---END SUMMARY---`. **Output the content between these markers verbatim to the user (any modification breaks the dedup hash). Do not rephrase, reformat, abbreviate, or create your own summary.** The script already includes full URLs for every alert and location.
 
 The JSON format:
 
@@ -210,10 +219,10 @@ For unsupported types, add `"skipped": true, "unsupported_type": "<type>"`.
 ## Safety Rules
 
 - **Agent reads content, identifies secrets, produces redaction.** Script handles all API calls.
-- **Never include any portion of a secret** in public comments, redaction markers, or terminal output.
-- **Never include alert URLs or numbers** in public comments.
+- **never include any portion of a secret** in public comments, redaction markers, or terminal output (even partial matches enable reconstruction).
+- **never include alert URLs or numbers** in public comments (they link directly to plaintext secrets).
 - **For comments, skip PATCH — go directly to DELETE + recreate.**
-- **Never mention edit history, "edited" button, or commit SHAs** in any public content.
+- **never mention edit history, "edited" button, or commit SHAs** in any public content (same reason — helps attackers locate plaintext).
 - **Ask for confirmation** before deleting any comment.
 - **One alert at a time** unless user requests batch.
 - **All public comments in English.**

@@ -1,6 +1,17 @@
 ---
 name: openclaw-test-heap-leaks
-description: Investigate OpenClaw pnpm test memory growth, Vitest OOMs, RSS spikes, and heap snapshot deltas.
+description: |
+  诊断 OpenClaw 测试内存增长、Vitest OOM、RSS 峰值及堆快照差异，区分真实泄漏与共享 worker 保留模块增长。当用户说 "heap leak"、"memory leak"、"OOM"、"RSS spike"、"heap snapshot"、"test memory"、"heap growth"、"memory leak 测试" 时，立即使用此 skill。即使用户没有明确说出 skill 名称，只要意图符合测试内存问题排查或 Vitest worker 内存耗尽，也应触发。
+allowed-tools:
+  - Bash(pnpm test *)
+  - Bash(pnpm canvas:a2ui:bundle)
+  - Bash(pnpm leak:embedded-run)
+  - Bash(node .agents/skills/openclaw-test-heap-leaks/scripts/heapsnapshot-delta.mjs *)
+  - Bash(node scripts/test-update-memory-hotspots.mjs)
+  - Read
+  - Edit
+  - Glob
+  - Grep
 ---
 
 # OpenClaw Test Heap Leaks
@@ -96,6 +107,10 @@ node .agents/skills/openclaw-test-heap-leaks/scripts/heapsnapshot-delta.mjs \
 When fixing a different runtime leak, add a new harness alongside this one
 rather than retrofitting it. The fixture function should mimic the lexical
 scope of the function where the leak lives, not be a generic abort-loop.
+
+## OpenAI Interface
+
+This skill has an OpenAI-compatible agent interface at `agents/openai.yaml`. Read agents/openai.yaml for the OpenAI agent dispatch schema, input/output format, and default prompt for automated heap-leak investigation workflows.
 
 ## Output Expectations
 

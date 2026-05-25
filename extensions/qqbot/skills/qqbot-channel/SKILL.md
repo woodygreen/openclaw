@@ -1,6 +1,7 @@
 ---
 name: qqbot-channel
-description: QQ channel management skill. Use qqbot_channel_api to list guilds and channels, inspect members, publish posts, manage announcements, and work with schedules through the QQ Open Platform HTTP API with automatic token authentication.
+description: |
+  QQ频道管理（guild/channel/member/announce/forum/schedule API 代理）。当用户说 "QQ频道"、"频道管理"、"频道列表"、"成员查询"、"QQ群"、"日程管理"、"子频道"、"论坛帖子"、"guild" 时，立即使用此 skill。即使用户没有明确说出 skill 名称，只要意图符合，也应触发。
 metadata: { "openclaw": { "emoji": "📡", "requires": { "config": ["channels.qqbot"] } } }
 ---
 
@@ -10,9 +11,7 @@ metadata: { "openclaw": { "emoji": "📡", "requires": { "config": ["channels.qq
 
 ## 📚 详细参考文档
 
-每个接口的完整参数说明、返回值结构和枚举值定义：
-
-- `references/api_references.md`
+当需要查看完整参数定义、返回值结构或枚举值时，读取 references/api_references.md
 
 ---
 

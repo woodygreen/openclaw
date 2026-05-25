@@ -1,14 +1,14 @@
 ---
 name: feishu-wiki
 description: |
-  Feishu knowledge base navigation. Activate when user mentions knowledge base, wiki, or wiki links.
+  飞书知识库导航与节点管理（spaces/nodes/get/create/move/rename）。当用户说 "知识库"、"飞书文档树"、"知识空间"、"wiki页面"、"wiki链接"、"feishu wiki"、"knowledge base" 时，立即使用此 skill。即使用户没有明确说出 skill 名称，只要意图符合，也应触发。
 ---
 
 # Feishu Wiki Tool
 
 Single tool `feishu_wiki` for knowledge base operations.
 
-Wiki `space_id` values are opaque strings. Always keep them quoted in tool calls, even when they contain only digits; passing a long numeric-looking ID as a number can corrupt the suffix due to JavaScript number precision limits.
+Quote all `space_id` values in tool calls to avoid JavaScript number precision corruption; long numeric-looking IDs passed as numbers can silently corrupt the suffix.
 
 ## Token Extraction
 
@@ -90,7 +90,7 @@ To different location:
 
 ## Wiki-Doc Workflow
 
-To edit a wiki page:
+When editing a wiki page, first `get` the node to obtain `obj_token`, then use `feishu_doc` tools to read and write the content:
 
 1. Get node: `{ "action": "get", "token": "wiki_token" }` → returns `obj_token`
 2. Read doc: `feishu_doc { "action": "read", "doc_token": "obj_token" }`

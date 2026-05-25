@@ -1,11 +1,18 @@
 ---
 name: security-triage
-description: Triage OpenClaw security advisories, drafts, and GHSA reports with shipped-tag and trust-model proof.
+description: Use immediately when reviewing, triaging, or responding to OpenClaw security advisories, GHSA reports, CVE, vulnerability drafts, or any security-related triage request. Triggers: "CVE report", "security bug", "vulnerability report", "security issue", "exploit", "GHSA report", "advisory triage", "security patch".
+allowed-tools:
+  - Bash(gh api *)
+  - Bash(gh search *)
+  - Bash(git tag *)
+  - Bash(git show *)
+  - Bash(npm view *)
+  - Bash(pbcopy *)
+  - Bash(mktemp *)
+  - Bash(head *)
 ---
 
 # Security Triage
-
-Use when reviewing OpenClaw security advisories, drafts, or GHSA reports.
 
 Goal: high-confidence maintainers' triage without over-closing real issues or shipping unnecessary regressions.
 

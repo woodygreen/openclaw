@@ -4,6 +4,19 @@
 
 通过 `qqbot_channel_api` 工具代理请求，工具自动处理鉴权。
 
+## Table of Contents
+
+- [通用说明](#通用说明) — 基础 URL、鉴权、错误返回格式
+- [返回值类型定义](#返回值类型定义) — Guild、Channel、User、Member、APIPermission、AnnouncesResult、ThreadDetail、ThreadListResult、Schedule
+- [枚举值定义](#枚举值定义) — 子频道类型、子频道子类型、子频道私密类型、子频道发言权限、公告类型、帖子格式、日程提醒类型、API 权限授权状态
+- [各接口详细说明](#各接口详细说明)
+  - 频道：[获取频道列表](#get-usersmeguilds--获取频道列表) · [获取频道 API 权限](#get-guildsguild_idapi_permission--获取频道-api-权限)
+  - 子频道：[获取子频道列表](#get-guildsguild_idchannels--获取子频道列表) · [获取子频道详情](#get-channelschannel_id--获取子频道详情) · [创建子频道](#post-guildsguild_idchannels--创建子频道) · [修改子频道](#patch-channelschannel_id--修改子频道) · [删除子频道](#delete-channelschannel_id--删除子频道)
+  - 成员：[获取成员列表](#get-guildsguild_idmembers--获取成员列表) · [获取成员详情](#get-guildsguild_idmembersuser_id--获取成员详情) · [获取身份组成员列表](#get-guildsguild_idrolesrole_idmembers--获取身份组成员列表) · [获取在线成员数](#get-channelschannel_idonline_nums--获取在线成员数)
+  - 公告：[创建频道公告](#post-guildsguild_idannounces--创建频道公告) · [删除公告](#delete-guildsguild_idannouncesmessage_id--删除公告)
+  - 论坛：[获取帖子列表](#get-channelschannel_idthreads--获取帖子列表) · [获取帖子详情](#get-channelschannel_idthreadsthread_id--获取帖子详情) · [发表帖子](#put-channelschannel_idthreads--发表帖子) · [删除帖子](#delete-channelschannel_idthreadsthread_id--删除帖子) · [发表评论](#post-channelschannel_idthreadsthread_idcomment--发表评论)
+  - 日程：[创建日程](#post-channelschannel_idschedules--创建日程) · [修改日程](#patch-channelschannel_idschedulesschedule_id--修改日程) · [删除日程](#delete-channelschannel_idschedulesschedule_id--删除日程)
+
 ---
 
 ## 📌 通用说明

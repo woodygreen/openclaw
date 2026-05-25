@@ -1,22 +1,20 @@
 ---
 name: parallels-discord-roundtrip
-description: Run macOS Parallels smoke with Discord send, host verification, host reply, and guest readback proof.
+description: Use immediately when macOS Parallels smoke must prove Discord two-way delivery end to end. Triggers: "smoke test", "E2E", "VM test", "macOS test", "roundtrip proof", "Parallels test", "Discord smoke", "VM roundtrip", "guest-host message".
+allowed-tools:
+  - Bash(ssh *)
+  - Bash(pnpm test:parallels:macos *)
+  - Bash(prlctl *)
+  - Bash(jq *)
+  - Bash(node *)
+  - Bash(git *)
 ---
 
 # Parallels Discord Roundtrip
 
-Use when macOS Parallels smoke must prove Discord two-way delivery end to end.
-
 ## Goal
 
-Cover:
-
-- install on fresh macOS snapshot
-- onboard + gateway health
-- guest `message send` to Discord
-- host sees that message on Discord
-- host posts a new Discord message
-- guest `message read` sees that new message
+Install on a fresh macOS snapshot, onboard with gateway health, send a guest message to Discord, verify the host sees it, have the host post a new Discord message, then confirm the guest reads it back.
 
 ## Inputs
 

@@ -1,9 +1,18 @@
 ---
 name: openclaw-ghsa-maintainer
-description: Inspect, patch, validate, publish, or confirm OpenClaw GHSA security advisories and private-fork state.
+description: Use immediately when the user mentions GHSA, CVE, vulnerability, security advisory, private-fork patch, or asks to inspect, patch, validate, publish, or confirm an OpenClaw security advisory. Covers advisory state fetch, private-fork PR verification, PATCH sequencing, Markdown/JSON payload assembly, and publish verification.
+allowed-tools:
+  - Bash:gh api
+  - Bash:npm view
+  - Bash:jq
+  - Bash:mktemp
+  - Bash:rg
+  - Bash:cat
 ---
 
 # OpenClaw GHSA Maintainer
+
+**Trigger phrases**: GHSA, CVE, vulnerability, security advisory, private fork patch, advisory publish, advisory state, npm version check against advisory, "is this GHSA published?", "patch the advisory", "verify private fork PRs"
 
 Use this skill for repo security advisory workflow only. Keep general release work in `openclaw-release-maintainer`.
 

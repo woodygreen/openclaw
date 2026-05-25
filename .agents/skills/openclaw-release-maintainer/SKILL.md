@@ -1,15 +1,57 @@
 ---
 name: openclaw-release-maintainer
-description: Prepare or verify OpenClaw stable/beta releases, changelogs, release notes, publish commands, and artifacts.
+description: Use immediately when preparing, verifying, or publishing OpenClaw stable/beta releases, changelogs, release notes, npm packages, macOS apps, or release artifacts. Also trigger when user says "release", "ship", "deploy", "cut a release", "beta release", "changelog", or asks about version bumping, npm publish, or mac signing/notarizing.
+allowed-tools:
+  - Bash(pnpm build *)
+  - Bash(pnpm release:check *)
+  - Bash(pnpm qa:otel:smoke)
+  - Bash(pnpm test:install:smoke *)
+  - Bash(pnpm test:docker *)
+  - Bash(pnpm test:parallels *)
+  - Bash(pnpm check *)
+  - Bash(pnpm ui:build *)
+  - Bash(pnpm check:architecture *)
+  - Bash(gh workflow run *)
+  - Bash(gh run view *)
+  - Bash(gh run list *)
+  - Bash(gh release create *)
+  - Bash(gh release edit *)
+  - Bash(npm view *)
+  - Bash(npm dist-tag *)
+  - Bash(node --import tsx scripts/*)
+  - Bash(git tag *)
+  - Bash(git checkout *)
+  - Bash(set -a; source *)
 ---
 
 # OpenClaw Release Maintainer
 
 Use this skill for release and publish-time workflow. Keep ordinary development changes and GHSA-specific advisory work outside this skill.
 
+## Contents
+
+- [Respect release guardrails](#respect-release-guardrails)
+- [Keep release channel naming aligned](#keep-release-channel-naming-aligned)
+- [Handle versions and release files consistently](#handle-versions-and-release-files-consistently)
+- [Build changelog-backed release notes](#build-changelog-backed-release-notes)
+- [Write release tweets](#write-release-tweets)
+- [Run publish-time validation](#run-publish-time-validation)
+- [Check all relevant release builds](#check-all-relevant-release-builds)
+- [Use the right auth flow](#use-the-right-auth-flow)
+- [Fallback local mac publish](#fallback-local-mac-publish)
+- [Run the release sequence](#run-the-release-sequence)
+- [GHSA advisory work](#ghsa-advisory-work)
+
+## Reference Files
+
+- **Release Tweets**: read `references/release-tweets.md` when drafting or reviewing X/Twitter posts for a release.
+- **Release Builds**: read `references/release-builds.md` when running the full beta/stable test roster, setting lane timeout caps, or checking release builds.
+- **Auth Flow**: read `references/auth-flow.md` when managing npm dist-tag promotion, 1Password fallback, or release workflow auth details.
+- **Mac Fallback**: read `references/mac-fallback.md` when CI/CD mac publishing is unavailable and local mac publish is needed.
+
 ## Respect release guardrails
 
-- Do not change version numbers without explicit operator approval.
+- Change version numbers only with explicit operator approval.
 - Ask permission before any npm publish or release step.
 - This skill should be sufficient to drive the normal release flow end-to-end.
 - Use the private maintainer release docs for credentials, recovery steps, and mac signing/notary specifics, and use `docs/reference/RELEASING.md` for public policy.
@@ -68,7 +110,7 @@ Use this skill for release and publish-time workflow. Keep ordinary development 
   announcement using Peter's bot token from `.profile`; do not block or roll
   back the release if the announcement fails.
 - When asked to announce on X, use `~/Projects/bird/bird` and follow the
-  release tweet style below.
+  release tweet style in `references/release-tweets.md`.
 
 ## Keep release channel naming aligned
 
@@ -90,13 +132,12 @@ Use this skill for release and publish-time workflow. Keep ordinary development 
   - Peekaboo Xcode project and plist version fields
 - Before creating a release tag, make every version location above match the version encoded by that tag.
 - For fallback correction tags like `vYYYY.M.D-N`, the repo version locations still stay at `YYYY.M.D`.
-- “Bump version everywhere” means all version locations above except `appcast.xml`.
+- "Bump version everywhere" means all version locations above except `appcast.xml`.
 - Release signing and notary credentials live outside the repo in the private maintainer docs.
 - Every stable OpenClaw release ships the npm package and macOS app together.
   Beta releases normally ship npm/package artifacts first and skip mac app
   build/sign/notarize unless the operator requests mac beta validation.
-- Do not let the slower macOS signing/notary path block npm publication once
-  the npm preflight has passed. Keep mac validation/publish running in
+- Publish npm independently once npm preflight passes, then run mac validation in parallel. Keep mac validation/publish running in
   parallel, publish npm from the successful npm preflight, then start published
   npm install/update, Docker, and Parallels verification while mac artifacts
   continue.
@@ -156,83 +197,7 @@ Use this skill for release and publish-time workflow. Keep ordinary development 
 
 ## Write release tweets
 
-Use the OpenClaw account's existing release-post style:
-
-- Format: `OpenClaw YYYY.M.D 🦞` or `🦞 OpenClaw YYYY.M.D is live`, blank line,
-  then 3-4 emoji-led bullets, blank line, one short punchline, then the release
-  link.
-- For beta: say `OpenClaw YYYY.M.D-beta.N 🦞` or `OpenClaw YYYY.M.D beta N is
-live`; keep it clearly beta and avoid implying stable promotion.
-- Lead with user-visible capabilities, then important integrations, then
-  reliability/security/install fixes. Compress "lots of fixes" into one
-  readable bullet.
-- Read the full changelog section before drafting. Do not lead with coverage,
-  CI, validation, or internal release mechanics unless the release is explicitly
-  about those. Peter prefers concrete user wins: features, integrations,
-  workflow improvements, and practical reliability fixes.
-- Tone: high-signal, slightly cheeky, confident, not corporate. One joke is
-  enough. Avoid punching down, insulting users, or promising what was not
-  verified.
-- Peter likes dry, compact taglines when they feel earned. Good example:
-  `Big release, tiny release notes... kidding.` Keep the joke short and let the
-  feature bullets carry the tweet; do not turn the punchline into a second
-  paragraph or a forced bit.
-- Length: release tweets are always standard tweets under 280 characters, with
-  room for one URL. Trim to 3-4 bullets and count the final text before posting.
-- Links/media: include the GitHub release or changelog link at the end of the
-  first release tweet.
-- Thread follow-ups: if doing a thread, keep the first release tweet as the
-  compact launch post, then publish one focused feature explainer per reply.
-  Follow-up replies should not repeat "new in VERSION" or the version number
-  when the thread context already makes it obvious.
-- Peter's preferred thread workflow: first agree on the generic launch tweet,
-  then proceed through follow-up tweets one by one. When he says `next`, provide
-  or copy the next follow-up only; do not dump the full thread again unless asked.
-- Every follow-up tweet should include a docs URL for that specific feature.
-  Prefer a bare URL over `Docs: <url>` unless the label is needed for clarity.
-  Keep follow-ups concise: around 160-220 raw characters is usually the sweet
-  spot; under 280 is the hard cap. If a URL makes a tweet fail, trim prose
-  before dropping the URL.
-  Prefer explaining diagnostics, trajectory/export, provider setup, model
-  commands, or other setup-heavy features in follow-ups instead of overloading
-  the first release tweet.
-- Hotfix/correction: be direct and accountable. State what slipped, what is
-  fixed, and the new version. Keep jokes out of incident-style posts.
-
-Examples to adapt:
-
-```text
-OpenClaw 2026.4.20-beta.1 🦞
-
-🐳 Docker install/update smoke
-🖥️ Parallels upgrade checks
-🔧 Package verification tightened
-
-Beta first. Stable after the gauntlet.
-<release link>
-```
-
-```text
-OpenClaw 2026.4.20 🦞
-
-🚀 Faster install + update
-🐳 Docker + Parallels verified
-🍎 macOS signed + notarized
-🔧 Channel/plugin fixes
-
-Good boring release. Best kind.
-<release link>
-```
-
-```text
-Packaging issue in 2026.4.20-beta.1.
-
-2026.4.20-beta.2 fixes install/update verification. No tag rewrites; beta moves
-forward.
-
-Upgrade with the beta channel.
-<release link>
-```
+For tweet format, style, thread workflow, and examples, read `references/release-tweets.md`.
 
 ## Run publish-time validation
 
@@ -287,240 +252,15 @@ node --import tsx scripts/openclaw-npm-postpublish-verify.ts <published-version>
 
 ## Check all relevant release builds
 
-- Always validate the OpenClaw npm release path before creating the tag.
-- Source Peter's profile before live release validation so OpenAI and Anthropic
-  credentials are available without printing secrets:
-  `set -a; source "$HOME/.profile"; set +a`.
-- Parallels validation and any local live model QA for this train must use both
-  `OPENAI_API_KEY` and `ANTHROPIC_API_KEY`. If either is missing after sourcing
-  `.profile`, stop before starting those local long lanes and report the
-  missing key.
-- Live credentialed channel QA is the GitHub Actions workflow
-  `QA-Lab - All Lanes` (`.github/workflows/qa-live-telegram-convex.yml`), not a
-  local substitute. Dispatch it from Actions against the release tag and wait
-  for it to pass before npm preflight/publish readiness. Use a SHA only when it
-  satisfies the workflow's secret-bearing trust gate: main ancestor or open PR
-  head. It runs the QA Lab mock parity gate plus live Matrix and live Telegram
-  lanes using the `qa-live-shared` environment; Telegram uses Convex CI
-  credential leases.
-- Default release checks:
-  - `pnpm check`
-  - `pnpm check:test-types`
-  - `pnpm check:architecture`
-  - `pnpm build`
-  - `pnpm ui:build`
-  - `pnpm release:check`
-  - `OPENCLAW_INSTALL_SMOKE_SKIP_NONROOT=1 pnpm test:install:smoke`
-- Full pre-npm beta test roster:
-  - default release checks above
-  - all Docker tests: `pnpm test:docker:all`, plus standalone Docker live lanes
-    not covered by the aggregate when operator says "all docker tests":
-    `pnpm test:docker:live-acp-bind`, `pnpm test:docker:live-cli-backend`, and
-    `pnpm test:docker:live-codex-harness`
-  - all Parallels install/update tests:
-    `pnpm test:parallels:npm-update -- --json` plus any needed individual
-    rerun lanes from `openclaw-parallels-smoke`
-  - all QA release validation: dispatch GitHub Actions > `QA-Lab - All Lanes`
-    against the release tag and require success. This is the release gate for
-    live credentialed Matrix/Telegram channel coverage. Use a SHA only when it
-    satisfies the workflow trust gate. Run local OpenAI/Anthropic suites or
-    repo-backed character evals only when the operator asks for extra model
-    coverage or a failure needs local debugging.
-- Post-published beta verification roster:
-  - `node --import tsx scripts/openclaw-npm-postpublish-verify.ts <beta-version>`
-  - install/update smoke against the published beta channel
-  - Docker install/update coverage that exercises the published beta package
-  - published npm Telegram proof: dispatch Actions > `NPM Telegram Beta E2E`
-    from `main` with `package_spec=openclaw@<beta-version>` and
-    `provider_mode=mock-openai`, and require success. This workflow is
-    maintainer-dispatched and intentionally has no `npm-release` approval gate;
-    `qa-live-shared` only supplies the shared QA secrets. This is the default
-    button path for installed-package onboarding, Telegram setup, and real
-    Telegram E2E against the published npm package.
-    Use the local `pnpm test:docker:npm-telegram-live` lane with the matching
-    `OPENCLAW_NPM_TELEGRAM_PACKAGE_SPEC` and Convex CI env only as a fallback
-    or debugging path.
-  - Parallels published beta install/update coverage with both OpenAI and
-    Anthropic provider keys available
-  - Parallels install/update proof must keep plugin installs enabled unless the
-    operator explicitly scopes a harness-only isolation check; a lane that
-    disables bundled plugin installs is not valid plugin/dependency release
-    evidence.
-  - targeted QA reruns only for areas touched by fixes after the full pre-npm
-    roster, unless the operator requests the full QA roster again. If the fix
-    touches live channel QA, credential plumbing, Matrix, Telegram, or the QA
-    harness, rerun Actions > `QA-Lab - All Lanes`.
-- Check all release-related build surfaces touched by the release, not only the npm package.
-- For beta-style full e2e batteries, hard-cap top-level long lanes instead of letting them run indefinitely. Use host `timeout --foreground`/`gtimeout --foreground` caps such as:
-  - `45m` for `OPENCLAW_INSTALL_SMOKE_SKIP_NONROOT=1 pnpm test:install:smoke`
-  - `90m` for `pnpm test:docker:all`
-  - `60m` each for standalone Docker live lanes
-  - `180m` for local full QA live OpenAI + Anthropic rosters when explicitly
-    requested; the default release channel QA gate is Actions >
-    `QA-Lab - All Lanes`
-  - Parallels caps from the `openclaw-parallels-smoke` skill
-    If a lane hits its cap, stop and inspect/fix the affected lane before continuing; do not continue to wait on the same process.
-- Actual npm install/update phases are capped at 5 minutes. If `npm install -g`, installer package install, or `openclaw update` takes longer than 300s in release e2e, stop treating the run as healthy progress and debug the installer/updater or harness.
-- Serialize host build/package mutations ahead of VM lanes. Finish `pnpm build`, `pnpm ui:build`, `pnpm release:check`, install smoke, and any Docker/package-prep lanes before starting Parallels `npm pack` lanes; otherwise `dist` can disappear during VM pack prep and produce false failures.
-- Include mac release readiness in preflight by running the public validation
-  workflow in `openclaw/openclaw` and the real mac preflight in
-  `openclaw/releases-private` for every release.
-- Treat the `appcast.xml` update on `main` as part of mac release readiness, not an optional follow-up.
-- The workflows remain tag-based. The agent is responsible for making sure
-  preflight runs complete successfully before any publish run starts.
-- Any fix after preflight means a new commit. Delete and recreate the tag and
-  matching GitHub release from the fixed commit, then rerun preflight from
-  scratch before publishing.
-  Exception: never delete or recreate a beta tag whose matching npm package has
-  already been published; increment to the next beta number instead. If only the
-  pushed tag/prerelease exists and npm publish has not happened, recreate that
-  same beta tag at the fixed commit.
-- For stable mac releases, generate the signed `appcast.xml` before uploading
-  public release assets so the updater feed cannot lag the published binaries.
-- Serialize stable appcast-producing runs across tags so two releases do not
-  generate replacement `appcast.xml` files from the same stale seed.
-- For stable releases, rely primarily on the latest beta's broader release
-  workflow confidence. When promoting the matching non-beta build to npm
-  `latest`, prefer a light time-bounded verification pass: published npm
-  postpublish verify, Docker install/update smoke, macOS-only Parallels
-  install/update smoke, and required QA signal. Do not rerun the full
-  Docker/Parallels matrix unless the beta evidence is stale, the stable build
-  differs materially from beta, or the operator explicitly asks for full
-  retesting.
-- If any required build, packaging step, or release workflow is red, do not say the release is ready.
+For the full beta/stable test roster, lane timeout caps, and release build details, read `references/release-builds.md`.
 
 ## Use the right auth flow
 
-- OpenClaw publish uses GitHub trusted publishing.
-- Stable npm promotion from `beta` to `latest` uses the private
-  `openclaw/releases-private/.github/workflows/openclaw-npm-dist-tags.yml`
-  workflow because `npm dist-tag` management needs `NPM_TOKEN`, while the
-  public npm release workflow stays OIDC-only.
-- Prefer fixing the private workflow token path over any local 1Password
-  fallback. The desired setup is a granular npm token stored as the private
-  repo's `NPM_TOKEN` secret, scoped to the `openclaw` package with read/write
-  and 2FA bypass for automation.
-- If the private dist-tag workflow cannot promote because `NPM_TOKEN` is absent
-  or stale, use the local tmux + 1Password fallback:
-  - Start or reuse a tmux session so interactive `npm login` and OTP prompts
-    are observable and recoverable.
-  - Hard rule: never run `op` directly in the main agent shell during release
-    work. Any 1Password CLI use must happen inside that tmux session so prompts
-    and alerts are contained and observable.
-  - Use the 1Password item `op://Private/Npmjs` for npm credentials and OTP.
-    Do not print passwords, tokens, or OTPs to the transcript; send them through
-    tmux buffers, env vars scoped to the tmux command, or `expect` with
-    `log_user 0`.
-  - Re-authenticate npm inside that tmux session with
-    `npm login --auth-type=legacy`, then confirm `npm whoami` reports
-    `steipete`.
-  - Promote with a fresh OTP:
-    `npm dist-tag add openclaw@YYYY.M.D latest --otp "$OTP"`.
-  - Verify with a cache-bypassed registry read, for example:
-    `npm view openclaw dist-tags --json --prefer-online --cache /tmp/openclaw-npm-cache-verify-$$`
-    and `npm view openclaw@latest version dist.tarball --json --prefer-online`.
-- Direct stable publishes can also use that private dist-tag workflow to point
-  `beta` at the already-published `latest` version when the operator wants both
-  tags aligned immediately.
-- The publish run must be started manually with `workflow_dispatch`.
-- The npm workflow and the private mac publish workflow accept
-  `preflight_only=true` to run validation/build/package steps without uploading
-  public release assets.
-- Real npm publish requires a prior successful npm preflight run id so the
-  publish job promotes the prepared tarball instead of rebuilding it.
-- Real private mac publish requires a prior successful private mac preflight
-  run id so the publish job promotes the prepared artifacts instead of
-  rebuilding or renotarizing them again.
-- The private mac workflow also accepts `smoke_test_only=true` for branch-safe
-  workflow smoke tests that use ad-hoc signing, skip notarization, skip shared
-  appcast generation, and do not prove release readiness.
-- `preflight_only=true` on the npm workflow is also the right way to validate an
-  existing tag after publish; it should keep running the build checks even when
-  the npm version is already published.
-- npm validation-only preflight may still be dispatched from ordinary branches
-  when testing workflow changes before merge. Release checks and real publish
-  use only `main` or `release/YYYY.M.D`.
-- `.github/workflows/macos-release.yml` in `openclaw/openclaw` is now a
-  public validation-only handoff. It validates the tag/release state and points
-  operators to the private repo. It still rebuilds the JS outputs needed for
-  release validation, but it does not sign, notarize, or publish macOS
-  artifacts.
-- `openclaw/releases-private/.github/workflows/openclaw-macos-validate.yml`
-  is the required private mac validation lane for `swift test`; keep it green
-  before any real stable mac publish run starts.
-- Real mac preflight and real mac publish both use
-  `openclaw/releases-private/.github/workflows/openclaw-macos-publish.yml`.
-- The private mac validation lane runs on GitHub's standard macOS runner.
-- The private mac preflight path runs on GitHub's xlarge macOS runner and uses
-  a SwiftPM cache because the build/sign/notarize/package path is CPU-heavy.
-- Private mac preflight uploads notarized build artifacts as workflow artifacts
-  instead of uploading public GitHub release assets.
-- Private smoke-test runs upload ad-hoc, non-notarized build artifacts as
-  workflow artifacts and intentionally skip stable `appcast.xml` generation.
-- For stable releases, npm preflight, public mac validation, private mac
-  validation, and private mac preflight must all pass before any real publish
-  run starts. For beta releases, npm preflight plus the selected Docker,
-  install/update, Parallels, and release-check lanes are sufficient unless mac
-  beta validation was explicitly requested.
-- Real publish runs may be dispatched from `main` or from a
-  `release/YYYY.M.D` branch. For release-branch runs, the tag must be contained
-  in that release branch, and the real publish must reuse a successful preflight
-  from the same branch.
-- The release workflows stay tag-based; rely on the documented release sequence
-  rather than workflow-level SHA pinning.
-- The `npm-release` environment must be approved by `@openclaw/openclaw-release-managers` before publish continues.
-- Mac publish uses
-  `openclaw/releases-private/.github/workflows/openclaw-macos-publish.yml` for
-  private mac preflight artifact preparation and real publish artifact
-  promotion.
-- Real private mac publish uploads the packaged `.zip`, `.dmg`, and
-  `.dSYM.zip` assets to the existing GitHub release in `openclaw/openclaw`
-  automatically when `OPENCLAW_PUBLIC_REPO_RELEASE_TOKEN` is present in the
-  private repo `mac-release` environment.
-- For stable releases, the agent must also download the signed
-  `macos-appcast-<tag>` artifact from the successful private mac workflow and
-  then update `appcast.xml` on `main`.
-- For beta mac releases, do not update the shared production `appcast.xml`
-  unless a separate beta Sparkle feed exists.
-- The private repo targets a dedicated `mac-release` environment. If the GitHub
-  plan does not yet support required reviewers there, do not assume the
-  environment alone is the approval boundary; rely on private repo access and
-  CODEOWNERS until those settings can be enabled.
-- Do not use `NPM_TOKEN` or the plugin OTP flow for the OpenClaw package
-  publish path; package publishing uses trusted publishing.
-- Use `NPM_TOKEN` only for explicit npm dist-tag management modes, because npm
-  does not support trusted publishing for `npm dist-tag add`.
-- `@openclaw/*` plugin publishes use a separate maintainer-only flow.
-- Only publish plugins that already exist on npm; bundled disk-tree-only plugins stay unpublished.
+For npm dist-tag promotion, 1Password fallback, workflow auth details, and mac release auth, read `references/auth-flow.md`.
 
 ## Fallback local mac publish
 
-- Keep the original local macOS publish workflow available as a fallback in case
-  CI/CD mac publishing is unavailable or broken.
-- Preserve the existing maintainer workflow Peter uses: run it on a real Mac
-  with local signing, notary, and Sparkle credentials already configured.
-- Follow the private maintainer macOS runbook for the local steps:
-  `scripts/package-mac-dist.sh` to build, sign, notarize, and package the app;
-  manual GitHub release asset upload; then `scripts/make_appcast.sh` plus the
-  `appcast.xml` commit to `main`.
-- `scripts/package-mac-dist.sh` now fails closed for release builds if the
-  bundled app comes out with a debug bundle id, an empty Sparkle feed URL, or a
-  `CFBundleVersion` below the canonical Sparkle build floor for that short
-  version. For correction tags, set a higher explicit `APP_BUILD`.
-- `scripts/make_appcast.sh` first uses `generate_appcast` from `PATH`, then
-  falls back to the SwiftPM Sparkle tool output under `apps/macos/.build`.
-- For stable tags, the local fallback may update the shared production
-  `appcast.xml`.
-- For beta tags, the local fallback still publishes the mac assets but must not
-  update the shared production `appcast.xml` unless a separate beta feed exists.
-- Treat the local workflow as fallback only. Prefer the CI/CD publish workflow
-  when it is working.
-- After any stable mac publish, verify all of the following before you call the
-  release finished:
-  - the GitHub release has `.zip`, `.dmg`, and `.dSYM.zip` assets
-  - `appcast.xml` on `main` points at the new stable zip
-  - the packaged app reports the expected short version and a numeric
-    `CFBundleVersion` at or above the canonical Sparkle build floor
+For local mac publish steps when CI/CD is unavailable, read `references/mac-fallback.md`.
 
 ## Run the release sequence
 

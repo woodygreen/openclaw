@@ -1,7 +1,17 @@
 ---
 name: openclaw-docs
-description: Write or review high-quality OpenClaw developer documentation.
+description: "Use immediately when writing, editing, or reviewing OpenClaw developer docs — triggers on 'help me document', 'improve this guide', 'write a quickstart', 'review the docs', 'update API reference', 'write a troubleshooting guide'."
 dependencies: []
+allowed-tools:
+  - Bash(pnpm docs:*)
+  - Bash(pnpm check:docs *)
+  - Bash(pnpm build *)
+  - Bash(pnpm test *)
+  - Bash(git *)
+  - Read
+  - Edit
+  - Glob
+  - Grep
 ---
 
 # OpenClaw Docs
@@ -10,11 +20,11 @@ dependencies: []
 
 Use this skill when writing, editing, or reviewing OpenClaw developer documentation for APIs, SDKs, CLI tools, integrations, quickstarts, platform guides, or technical product docs.
 
-Write documentation that is concise, helpful, and comprehensive: fast for first success, precise for production, and easy to scan when debugging.
+Write concise, helpful, and comprehensive documentation: fast for first success, precise for production, and easy to scan when debugging.
 
 ## Core Model
 
-Use an OpenClaw documentation model, strengthened by Write the Docs principles:
+Apply the OpenClaw documentation model, reinforced by Write the Docs principles:
 
 - Lead with what the developer is trying to do.
 - Give one recommended path before alternatives.
@@ -76,7 +86,7 @@ Use this default guide structure:
 8. Troubleshooting: include common errors near the workflow that causes them.
 9. See also: link to concepts, API references, SDK docs, and adjacent guides.
 
-Keep navigation user-intent based. Do not force readers to understand internal product taxonomy before they can pick a task.
+Prefer user-intent navigation so readers can pick a task without first understanding internal product taxonomy.
 
 ## Documentation Lifecycle
 
@@ -90,7 +100,7 @@ Write and maintain docs with the same discipline as code:
 - Involve the right reviewers: code owners for behavior, support or QA for user failure modes, and docs maintainers for structure and style.
 - Preserve older-version guidance only when users need it; otherwise document the current supported behavior.
 
-Do not use FAQs as a dumping ground for unrelated material. Promote recurring questions into task, concept, troubleshooting, or reference pages.
+Promote recurring questions into task, concept, troubleshooting, or reference pages rather than using FAQs as a dumping ground for unrelated material.
 
 ## Writing Style
 
@@ -103,7 +113,7 @@ Write in a direct, practical voice:
 - Put caveats exactly where they affect the step.
 - Avoid marketing language, hype, generic benefits, and vague claims.
 - Avoid long conceptual lead-ins before the first actionable step.
-- Do not over-explain common developer concepts unless the product has a nonstandard contract.
+Avoid over-explaining common developer concepts unless the product has a nonstandard contract.
 - Define OpenClaw-specific jargon and abbreviations before first use.
 - Use sentence case for headings unless an OpenClaw product name, command, or identifier requires capitalization.
 - Use descriptive link text that names the destination or action; avoid vague links such as "this page" or "click here".
@@ -145,7 +155,7 @@ Go deep where mistakes are expensive:
 - Error codes and recovery paths
 - Data retention, privacy, and compliance-sensitive behavior
 
-Do not bury this detail in a distant reference if developers need it to complete the task safely.
+Prefer burying this detail near the relevant step rather than in a distant reference when developers need it to complete the task safely.
 
 ## Examples
 
@@ -198,7 +208,7 @@ Verify docs changes like product changes:
 - Run the relevant docs build, docs index, formatter, link checker, or generated-doc check when available.
 - Run commands, snippets, and examples that the page tells users to run whenever feasible.
 - Confirm screenshots, UI labels, CLI output, config keys, flags, defaults, errors, and file paths match current behavior.
-- Prefer executable checks over prose-only review for API, CLI, config, generated reference, and troubleshooting docs.
+Prefer executable checks over prose-only review for API, CLI, config, generated reference, and troubleshooting docs.
 - If a verification step is not feasible, say what was not verified and why.
 
 ## Completeness Checks

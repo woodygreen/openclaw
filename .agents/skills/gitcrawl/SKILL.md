@@ -1,11 +1,14 @@
 ---
 name: gitcrawl
-description: Use gitcrawl for OpenClaw issue and PR archive search, duplicate discovery, related-thread clustering, and local GitHub mirror freshness checks.
+description: "Use immediately when triaging issues, finding similar issues, checking if something has been reported, or discovering duplicate candidates — triggers on 'find similar issues', 'has this been reported', 'check for existing PRs', 'search issue history', 'find duplicates', 'duplicate issue', 'already reported', 'known issue', 'is this a duplicate', 'search issues', 'triage'."
 metadata:
   openclaw:
     requires:
       bins:
         - gitcrawl
+allowed-tools:
+  - Bash(gh *)
+  - Bash(gitcrawl *)
 ---
 
 # Gitcrawl
@@ -66,3 +69,7 @@ gitcrawl init --portable-store git@github.com:openclaw/gitcrawl-store.git --json
 - Use `gh`, `gh api`, and the current checkout for live state before commenting, labeling, closing, reopening, merging, or filing a PR review.
 - Do not close or label based only on `gitcrawl` similarity. Require matching problem intent plus live verification.
 - If `gitcrawl` is unavailable, say so and fall back to targeted `gh search` rather than blocking normal maintainer work.
+
+## OpenAI Interface
+
+`agents/openai.yaml` defines an OpenAI-compatible agent interface with a `display_name`, `short_description`, and `default_prompt`. External orchestrators using the OpenAI agent protocol can invoke this skill through that interface to search local OpenClaw issue and PR history, find related threads and duplicate candidates, then verify actionable decisions with live GitHub.

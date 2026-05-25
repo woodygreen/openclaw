@@ -16,6 +16,20 @@ see-also:
 
 This document describes how the OpenProse VM tracks execution state using **files in the `.prose/` directory**. This is one of two state management approaches (the other being in-context state in `in-context.md`).
 
+## Table of Contents
+
+- [Overview](#overview) — File-based state persistence benefits: inspection, resumption, long-running workflows, debugging
+- [Directory Structure](#directory-structure) — .prose/ layout: runs, bindings, imports, agents (project and user-scoped)
+- [File Formats](#file-formats) — .env config, state.md annotated code, binding files, agent memory segments
+- [Who Writes What](#who-writes-what) — File ownership: VM-only (state.md) vs subagent-writable (bindings, agents)
+- [Subagent Output Writing](#subagent-output-writing) — How subagents write outputs and return data to the VM
+- [Imports Recursive Structure](#imports-recursive-structure) — Nested program execution directory layout
+- [Memory Scoping for Persistent Agents](#memory-scoping-for-persistent-agents) — Project-scoped vs user-scoped agent memory
+- [VM Update Protocol](#vm-update-protocol) — How the VM updates state.md after each execution step
+- [Resuming Execution](#resuming-execution) — Picking up interrupted programs from file state
+
+---
+
 ## Overview
 
 File-based state persists all execution artifacts to disk. This enables:

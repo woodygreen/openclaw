@@ -1,6 +1,40 @@
 #!/usr/bin/env node
 // Secret scanning alert handler for OpenClaw maintainers.
 // Usage: node secret-scanning.mjs <command> [options]
+//
+// ─── Table of Contents ──────────────────────────────────────────────────────
+//
+// 1.  Helpers
+//     - fail()                — exit with error message
+//     - tmpFile()              — create owner-only temp file with UUID name
+//     - gh()                   — run `gh` CLI with JSON parsing
+//     - ghGraphQL()            — run `gh api graphql` with query
+//     - failOnGraphQLFailure() — abort on GraphQL errors
+//     - escapeGraphQLString()  — escape strings for GraphQL literals
+//     - formatGraphQLAfterClause() — build pagination `after:` clause
+//     - findDiscussionCommentNode() — locate a comment by databaseId
+//     - fetchDiscussionReplyPage()  — paginate discussion comment replies
+//     - fetchDiscussionComment()    — find a specific discussion comment
+//     - createDiscussionComment()   — create a discussion comment via GraphQL
+//
+// 2.  Commands
+//     - cmdFetchAlert()        — fetch alert metadata + locations (hide_secret=true)
+//     - cmdFetchContent()      — fetch content for a location, save body to temp file
+//     - cmdRedactBody()        — PATCH issue/PR body with redacted content file
+//     - cmdDeleteComment()     — DELETE an issue/PR comment
+//     - cmdDeleteDiscussionComment() — DELETE a discussion comment via GraphQL
+//     - cmdRecreateDiscussionComment() — CREATE a discussion comment via GraphQL
+//     - cmdRecreateComment()   — CREATE a replacement issue/PR comment from file
+//     - cmdNotify()            — post notification comment with location-type template
+//     - cmdResolve()           — PATCH alert to resolved state
+//     - cmdListOpen()          — list all open secret scanning alerts
+//     - cmdSummary()           — print formatted summary table from JSON results
+//
+// 3.  Dispatch
+//     - CLI argument routing to command functions
+//     - Usage/help output for unknown or missing commands
+//
+// ────────────────────────────────────────────────────────────────────────────
 
 import { execFileSync, spawnSync } from "node:child_process";
 import crypto from "node:crypto";

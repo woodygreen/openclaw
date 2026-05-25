@@ -1,12 +1,21 @@
 ---
 name: feishu-perm
 description: |
-  Feishu permission management for documents and files. Activate when user mentions sharing, permissions, collaborators.
+  飞书文档/文件权限管理（list/add/remove collaborators）。当用户说 "授权"、"访问控制"、"access control"、"grant access"、"分享设置"、"sharing"、"permissions"、"collaborators"、"权限"、"共享" 时，立即使用此 skill。即使用户没有明确说出 skill 名称，只要意图符合，也应触发。
 ---
 
 # Feishu Permission Tool
 
 Single tool `feishu_perm` for managing file/document permissions.
+
+## Permission Workflow
+
+To share a document: first use `list` to check existing collaborators, then use `add` to grant access with the desired permission level.
+To audit access: use `list` to see all current collaborators and their roles.
+To revoke access: use `remove` with the target collaborator's open_id.
+To check who can access: use `list` before making changes to avoid duplicate grants.
+
+⚠️ The feishu_perm tool is disabled by default. It must be explicitly enabled before use — ask the user to enable it if permission operations fail.
 
 ## Actions
 

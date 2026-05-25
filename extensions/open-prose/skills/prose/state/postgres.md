@@ -18,6 +18,30 @@ see-also:
 
 This document describes how the OpenProse VM tracks execution state using a **PostgreSQL database**. This is an experimental alternative to file-based state (`filesystem.md`), SQLite state (`sqlite.md`), and in-context state (`in-context.md`).
 
+## Table of Contents
+
+- [Prerequisites](#prerequisites) — psql CLI installation, version requirements, fallback to SQLite
+- [Overview](#overview) — Concurrent writes, network access, team collaboration, rich SQL, high throughput
+- [Security Warning](#security-warning) — Credential visibility to subagents, dedicated database, limited-privilege user
+- [When to Use PostgreSQL State](#when-to-use-postgresql-state) — Decision tree and concurrency case analysis
+- [Database Setup](#database-setup) — Docker, local, and cloud PostgreSQL setup options
+- [Database Location](#database-location) — Environment variable configuration and precedence rules
+- [Responsibility Separation](#responsibility-separation) — VM, subagent, and shared responsibilities
+- [Core Schema](#core-schema) — Tables, indexes, naming conventions, scope resolution queries
+- [Database Interaction](#database-interaction) — VM and subagent SQL operations with psql CLI
+- [Context Preservation in Main Thread](#context-preservation-in-main-thread) — VM narration alongside database state
+- [Parallel Execution](#parallel-execution) — Row-level locking, concurrent write advantage
+- [Loop Tracking](#loop-tracking) — Iteration state tracking in database
+- [Error Handling](#error-handling) — Error propagation and retry in PostgreSQL context
+- [Project-Scoped and User-Scoped Agents](#project-scoped-and-user-scoped-agents) — run_id approach, query patterns, memory scoping
+- [Large Outputs](#large-outputs) — Handling outputs exceeding context limits
+- [Resuming Execution](#resuming-execution) — Picking up interrupted programs from database state
+- [Flexibility Encouragement](#flexibility-encouragement) — Adapting schema and queries to specific needs
+- [Comparison with Other Modes](#comparison-with-other-modes) — PostgreSQL vs filesystem vs SQLite vs in-context
+- [Summary](#summary) — Key takeaways for PostgreSQL state management
+
+---
+
 ## Prerequisites
 
 **Requires:**

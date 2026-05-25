@@ -1,7 +1,8 @@
 ---
 name: qqbot-media
-description: QQBot rich media send and receive support. Use <qqmedia> tags to send image, voice, video, or file attachments, with the media type inferred from the file extension.
+description: QQ富媒体收发 skill。当用户说发图片、传文件、发语音、发视频、send image、share file、attach media时，立即使用此 skill。即使用户没有明确说出 skill 名称，只要意图符合，也应触发。
 metadata: { "openclaw": { "emoji": "📸", "requires": { "config": ["channels.qqbot"] } } }
+allowed-tools: ["exec"]
 ---
 
 # QQBot 富媒体收发
@@ -27,11 +28,11 @@ metadata: { "openclaw": { "emoji": "📸", "requires": { "config": ["channels.qq
 
 ## 规则
 
-1. **路径必须是绝对路径**（以 `/` 或 `http` 开头）
-2. **标签必须用开闭标签包裹路径**：`<qqmedia>路径</qqmedia>`
-3. **待发送的本地文件须落在 OpenClaw 媒体目录下**：生成、下载或复制出的文件应写入 **`~/.openclaw/media/qqbot/`**（或其子目录），再写进 `<qqmedia>`。不要只放在 `~/.openclaw/workspace/` 等工作区根目录——平台安全策略只允许从 `~/.openclaw/media/`（含 `media/qqbot`）等受信根路径上传，否则会拦截、发不出去。
-4. **文件大小上限**：图片 30MB / 视频 100MB / 文件 100MB / 语音 20MB
-5. **你有能力发送本地图片/文件**，直接用标签包裹路径即可，**不要说"无法发送"**
-6. 发送语音时不要重复语音中已朗读的文字
-7. 多个媒体用多个标签
-8. 以会话上下文中的能力说明为准（如未启用语音则不要发语音）
+1. **Always use absolute paths for media files**（以 `/` 或 `http` 开头）— relative paths are unstable across different runtime environments
+2. **Wrap file paths with open/close <qqmedia> tags**：`<qqmedia>路径</qqmedia>`
+3. **Write local files to the OpenClaw media directory before sending**：生成、下载或复制出的文件应写入 **`~/.openclaw/media/qqbot/`**（或其子目录），再写进 `<qqmedia>`。不要只放在 `~/.openclaw/workspace/` 等工作区根目录——平台安全策略只允许从 `~/.openclaw/media/`（含 `media/qqbot`）等受信根路径上传，否则会拦截、发不出去。
+4. **Respect file size limits**：图片 30 MB（QQ platform limits image uploads to 30 MB）/ 视频 100 MB / 文件 100 MB / 语音 20 MB
+5. **You can send local images directly** — wrap the path with `<qqmedia>` tags, never say "I cannot send files"
+6. Do not repeat transcribed text when sending voice messages
+7. Use separate `<qqmedia>` tags for each media item
+8. Follow the capability description in the conversation context (e.g. do not send voice if not enabled)

@@ -1,9 +1,11 @@
 ---
 name: wiki-maintainer
-description: Maintain the OpenClaw memory wiki vault with deterministic pages, managed blocks, and source-backed updates.
+description: |
+  维护 OpenClaw 记忆知识库 vault，提供确定性页面生成、受控块管理、来源追溯更新及 wiki_lint 校验。当用户说 "memory wiki"、"更新知识库"、"update wiki page"、"wiki search"、"搜索wiki"、"wiki lint"、"知识库维护"、"vault maintenance"、"记忆库" 时，立即使用此 skill。即使用户没有明确说出 skill 名称，只要意图符合，也应触发。
+allowed-tools: ["Bash", "exec"]
 ---
 
-Use this skill when working inside a memory-wiki vault.
+Use this skill when working inside a memory-wiki vault. When the vault render mode is `obsidian`, prefer the `obsidian-vault-maintainer` skill instead.
 
 - Prefer `wiki_status` first when you need to understand the vault mode, path, or Obsidian CLI availability.
 - Prefer `memory_search` with `corpus=all` when the shared memory tools are available and you want one recall pass across durable memory plus the compiled wiki.

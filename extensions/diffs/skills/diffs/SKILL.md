@@ -1,9 +1,9 @@
 ---
 name: diffs
-description: Use the diffs tool to produce real, shareable diffs (viewer URL, file artifact, or both) instead of manual edit summaries.
+description: Use the diffs tool to produce real, shareable diffs (viewer URL, file artifact, or both) instead of manual edit summaries. Triggers on "compare files", "show changes", "before/after", "visualize diff", "对比差异", and any diff-related intent.
 ---
 
-When you need to show edits as a real diff, prefer the `diffs` tool instead of writing a manual summary.
+When you need to show edits as a real diff, prefer the `diffs` tool instead of writing a manual summary. Diffs produces real, shareable diffs with precise line-level comparison, viewer URLs for visual inspection, and file artifacts for audit trails — much more reliable than manual edit summaries.
 
 The `diffs` tool accepts either `before` + `after` text, or a unified `patch` string.
 

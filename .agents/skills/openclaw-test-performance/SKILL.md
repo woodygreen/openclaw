@@ -1,6 +1,31 @@
 ---
 name: openclaw-test-performance
-description: Benchmark, diagnose, and optimize OpenClaw test and plugin-suite runtime, import hotspots, CPU/RSS, heap growth, and slow coverage paths.
+description: |
+  基准先行诊断 OpenClaw 测试或插件套件的性能问题（慢速、内存过重），测量后再优化。当用户说 "tests are slow"、"CI timing out"、"optimize test suite"、"speed up tests"、"benchmark tests"、"测试太慢"、"CI 超时"、"优化测试" 时，立即使用此 skill。即使用户没有明确说出 skill 名称，只要意图符合测试性能诊断或基准测量，也应触发。边界：此 skill 负责测量和诊断；optimizetests skill 负责修复和加速。
+allowed-tools:
+  - Bash(pnpm test *)
+  - Bash(pnpm test:perf:groups *)
+  - Bash(pnpm test:extensions *)
+  - Bash(pnpm test:extensions:batch *)
+  - Bash(pnpm test:extensions:memory *)
+  - Bash(pnpm test:changed *)
+  - Bash(pnpm check:changed *)
+  - Bash(pnpm build *)
+  - Bash(pnpm plugin-sdk:api:check *)
+  - Bash(pnpm plugin-sdk:api:gen *)
+  - Bash(pnpm crabbox:run *)
+  - Bash(pnpm crabbox:stop *)
+  - Bash(pnpm install *)
+  - Bash(pnpm run *)
+  - Bash(/usr/bin/time *)
+  - Bash(timeout *)
+  - Bash(git *)
+  - Bash(gh *)
+  - Bash(scripts/committer *)
+  - Read
+  - Edit
+  - Glob
+  - Grep
 ---
 
 # OpenClaw Test Performance
@@ -148,6 +173,10 @@ pnpm test
 Use `openclaw-test-heap-leaks` when RSS keeps growing across intervals, workers
 OOM, or the suspect command has app-object retention. Do not call RSS growth a
 leak until snapshots or retainers support it.
+
+## OpenAI Interface
+
+This skill has an OpenAI-compatible agent interface at `agents/openai.yaml`. Read agents/openai.yaml for the OpenAI agent interface schema, input/output contract, and default prompt template for automated performance-test workflows.
 
 ## Common Root Causes
 

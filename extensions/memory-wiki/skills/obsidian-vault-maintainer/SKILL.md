@@ -1,6 +1,8 @@
 ---
 name: obsidian-vault-maintainer
-description: Maintain an Obsidian-friendly memory wiki vault with wikilinks, frontmatter, and official Obsidian CLI awareness.
+description: |
+  维护 Obsidian 兼容的记忆知识库 vault，支持 wikilinks、frontmatter、Dataview 查询及 Obsidian CLI 集成。当用户说 "Obsidian notes"、"Obsidian笔记"、"vault sync"、"vault同步"、"wikilinks"、"Dataview"、"Obsidian vault"、"知识库同步"、"笔记管理" 时，立即使用此 skill。即使用户没有明确说出 skill 名称，只要意图符合，也应触发。
+allowed-tools: ["Bash", "exec"]
 ---
 
 Use this skill when the memory-wiki vault render mode is `obsidian` or the user wants the wiki to play nicely with Obsidian.

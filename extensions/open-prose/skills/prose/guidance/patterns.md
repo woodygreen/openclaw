@@ -13,6 +13,18 @@ see-also:
 
 This document catalogs proven patterns for orchestrating AI agents effectively. Each pattern addresses specific concerns: robustness, cost efficiency, speed, maintainability, or self-improvement capability.
 
+## Table of Contents
+
+- [Structural Patterns](#structural-patterns) — Parallel independent work, fan-out/fan-in, pipeline composition, agent specialization, reusable blocks
+- [Robustness Patterns](#robustness-patterns) — Bounded iteration, graceful degradation, retry with backoff, error context capture, defensive context
+- [Cost Efficiency Patterns](#cost-efficiency-patterns) — Model tiering, context minimization, early termination, race for speed, batch similar work
+- [Self-Improvement Patterns](#self-improvement-patterns) — Self-verification, iterative refinement, multi-perspective review, adversarial validation, consensus building
+- [Maintainability Patterns](#maintainability-patterns) — Descriptive agent names, prompt-as-contract, separation of concerns, explicit context flow
+- [Performance Patterns](#performance-patterns) — Lazy evaluation, progressive disclosure, work stealing
+- [Composition Patterns](#composition-patterns) — Workflow templates, middleware pattern, circuit breaker
+- [Observability Patterns](#observability-patterns) — Checkpoint narration, structured output contracts
+- [Summary](#summary) — Pattern selection guidelines
+
 ---
 
 ## Structural Patterns

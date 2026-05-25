@@ -1,7 +1,13 @@
 ---
 name: tag-duplicate-prs-issues
-description: Use gitcrawl to search duplicate OpenClaw PRs/issues, group related work in prtags, and sync duplicate state to GitHub.
----
+description: |
+  判断 OpenClaw PR/issue 是否为重复工作，搜索重复项，分组关联工作并同步重复状态到 GitHub。当用户说 "duplicate PR"、"duplicate issue"、"find duplicates"、"tag duplicates"、"is this a duplicate?"、"find similar PRs"、"group related issues"、"duplicate search"、"查找重复" 时，立即使用此 skill。即使用户没有明确说出 skill 名称，只要意图符合重复 PR/issue 分类或分组，也应触发。仅限维护者使用。
+allowed-tools:
+  - Bash(gitcrawl *)
+  - Bash(gh *)
+  - Bash(prtags *)
+  - Bash(curl *)
+  ---
 
 # Tag Duplicate PRs and Issues
 
@@ -18,7 +24,11 @@ Read-only discovery can still proceed with `gitcrawl` and live `gh`.
 ### Companion Skills
 
 Use `$gitcrawl` first for local candidate discovery.
-Use the `prtags` skill from the `prtags` repo at `skills/prtags/SKILL.md` when it is available.
+Use the `prtags` skill from the `prtags` repo at `skills/prtags/SKILL.md` when it is available. Read the prtags SKILL.md before Step 5 if you need prtags CLI details beyond this document.
+
+### OpenAI Agent Config
+
+This skill includes an `agents/openai.yaml` that defines the interface, short description, and default prompt for OpenAI-style agent dispatchers. It is not used by Claude Code directly but provides the agent metadata needed by OpenAI-compatible runtimes that consume skill definitions. Read `agents/openai.yaml` when setting up an external agent orchestrator to understand the YAML configuration schema for duplicate detection runs.
 
 ### Install the CLIs
 
